@@ -30,12 +30,13 @@ gzman=1
 
 # strip?
 dostrip=1
+dostrip_static=0 # Atleast std. Irix strip seems to mangle archives if strip -f is used
 
 # Setup default args for strip. They match /usr/bin/strip in Irix 6.2
 # Change these if you're using strip from GNU Binutils (recommended)
 strip_elf_args="" # GNU default is -g
 strip_shared_args="-f" # GNU default is --strip-unneeded
-strip_static_args="" # GNU default is -g
+strip_static_args="-f" # GNU default is -g
 
 # Other
 usedepend=1 # Don't use depend file even if it's available
@@ -362,12 +363,14 @@ fetch_depends()
 {
     if [ -r $depends ]; then
 	reqidx=0
-	while read ss req
+	while read ss reqpkg reqvers
 	do
 	    reqs[$reqidx]=$ss
-	    if [ "$req" == "auto" ]; then # auto create depend on sw.base
+	    if [ "$reqvers" == "auto" ]; then # auto create depend on $reqpkg (assumed internal)
 		nver=$(fix_ver "$version-$pkgver")
-		req="$pkgname.sw.base $nver $nver"
+		req="$pkgname.$reqpkg $nver $nver"
+	    else
+		req="$reqpkg $reqvers"
 	    fi
 	    reqp[$reqidx]=$req
 	    let "reqidx = $reqidx + 1"
