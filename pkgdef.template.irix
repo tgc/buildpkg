@@ -2,9 +2,10 @@
 pkgname="$pkgprefix""$topdir"
 name="$topdir"
 pkgver="$pkgver"
+shortdesc="change me please"
 
 [base]
-subsys=sw.eoe
+subsys=sw.base
 files(-,root,sys)
 $_bindir
 $_sharedir
