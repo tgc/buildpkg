@@ -373,19 +373,17 @@ check_unpackaged()
     $FIND . -type d -print|$SED -e 's/\.\///g'|$GREP -v '^\.' >> $tmpdir/files.tmp
     $SORT $metadir/files.tmp|$UNIQ > $tmpdir/f1
     $SORT $tmpdir/files.tmp > $tmpdir/f2
-    if [ ! "$($CMP $tmpdir/f1 $tmpdir/f2)" == "" ]; then
-	upf="$($CAT $tmpdir/f1 $tmpdir/f2 | $SORT | $UNIQ -u)"
-        if [ ! -z "$upf" ]; then
-            echo "There are unpackaged files in the stagedir:"
-            for i in $upf
-            do
-                echo "${indent4}${i}"
-            done
-        fi
-        $RM -f $tmpdir/f1 $tmpdir/f2
-        if [ "$ignore_unpackaged_files" -eq 0 ]; then
-            error $E_UNPACKAGED_FILES check_unpackaged
-        fi
+    upf="$($CAT $tmpdir/f1 $tmpdir/f2 | $SORT | $UNIQ -u)"
+    if [ ! -z "$upf" ]; then
+	echo "There are unpackaged files in the stagedir:"
+	for i in $upf
+	do
+	    echo "${indent4}${i}"
+	done
+	$RM -f $tmpdir/f1 $tmpdir/f2
+	if [ "$ignore_unpackaged_files" -eq 0 ]; then
+	    error $E_UNPACKAGED_FILES check_unpackaged
+	fi
     fi
     $RM -f $tmpdir/f1 $tmpdir/f2
 }
