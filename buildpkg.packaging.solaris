@@ -30,6 +30,9 @@ os=sol`$UNAME -r`
 # ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
 distfile=$topdir-$version-$pkgver.sb-$os-$cpu-$pkgdirdesig
 
+# Variables that control functionality
+usedepend=1 # default to looking for a depend file in $metadir
+
 ##################################################### 
 # "external" functions
 #####################################################
@@ -84,7 +87,7 @@ prototype()
     add_meta_file pkginfo "$metadir/pkginfo"
 
     # If a dependency file is available then use it
-    [ -r $metadir/depend ] && add_meta_file depend "$metadir/depend"
+    [ -r $metadir/depend -a $usedepend -eq 1 ] && add_meta_file depend "$metadir/depend"
 
     case $3 in
 	'script')   [ -r $metadir/preinstall ] && add_meta_file preinstall "$metadir/preinstall"
