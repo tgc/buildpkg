@@ -202,6 +202,8 @@ add_files()
 	local group=$5
 	local specattr=$6
 
+	[ ! "$topinstalldir" == "/" ] && topinstalldir="${topinstalldir}/"
+
 	local FILES=$($FIND $fspec -type f -print|$TEE -a $metadir/files.tmp)
 	OIFS=$IFS # We play IFS tricks so we can handle filenames with embedded spaces
 	IFS="
@@ -218,12 +220,12 @@ add_files()
 	    doop=$(check_ops "$i")
 	    fname=$(fix_fname "$i")
 	    if [ ! -z "$specattr" ]; then
-		echo "f $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat} $specattr" >>$idbfile
+		echo "f $perm $owner $group ${topinstalldir:1}$fname $i ${pkgname}.${prodcat} $specattr" >>$idbfile
 	    else
 		if [ ! -z "$doop" ]; then
-		    echo "f $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat} $doop" >>$idbfile
+		    echo "f $perm $owner $group ${topinstalldir:1}$fname $i ${pkgname}.${prodcat} $doop" >>$idbfile
 		else
-		    echo "f $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat}" >>$idbfile
+		    echo "f $perm $owner $group ${topinstalldir:1}$fname $i ${pkgname}.${prodcat}" >>$idbfile
 		fi
 	    fi
 
@@ -246,7 +248,7 @@ add_files()
 	    local temp=`$LS -l "$i"|$CUT -d '>' -f 2`
 	    local symval=${temp# }
 	    fname=$(fix_fname "$i")
-	    echo "l $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat} symval($symval)" >>$idbfile
+	    echo "l $perm $owner $group ${topinstalldir:1}$fname $i ${pkgname}.${prodcat} symval($symval)" >>$idbfile
 	done
 	IFS=$OIFS
 }
@@ -262,6 +264,8 @@ add_dir()
     local owner=$4
     local group=$5
 
+    [ ! "$topinstalldir" == "/" ] && topinstalldir="${topinstalldir}/"
+	
     # Note that dir blablah is *not* added to $metadir/files.tmp
     local FILES=$($FIND $fspec -type d -print)
     OIFS=$IFS
@@ -277,7 +281,7 @@ add_dir()
 		perm=$defperm
 	fi
 	fname=$(fix_fname "$i")
-	echo "d $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat}" >>$idbfile
+	echo "d $perm $owner $group ${topinstalldir:1}$fname $i ${pkgname}.${prodcat}" >>$idbfile
     done
     IFS=$OIFS
 }
@@ -745,7 +749,14 @@ auto_src()
 # and then copy the result to $stagedir/$prefix/relnotes/$topdir-$version-$pkgver.txt
 auto_rel()
 {
-    if [ -r $metadir/relnotes ]; then
+    local i
+    local rn
+
+    for i in relnotes relnotes.${_os};
+    do
+	[ -r ${metadir}/${i} ] && rn=$i
+    done
+    if [ -r ${metadir}/${rn} ]; then
 	local relmetadir=${stagedir}${metainstalldir}/relnotes/$topdir-$version-$pkgver
 	local cf="$(_upls $configure_args)"
 	local fullcf="./configure $cf"
@@ -758,7 +769,7 @@ auto_rel()
 	    -e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
 	    -e "s;%%CONFIGURE%%;${fullcf};g" \
 	    -e "s;%%COMPILER%%;${compiler};g" \
-		$metadir/relnotes > "$relmetadir/${topdir}.txt"
+		${metadir}/${rn} > "$relmetadir/${topdir}.txt"
     else
 	echo "auto_rel: No release notes found!"
     fi
