@@ -2,7 +2,15 @@
 # Global function library for buildpkg
 #
 # This file is designed to be sourced by pr. package buildscripts
+#
+# We rely on an environment variable called BUILDPKG_BASE to
+# define the root of the buildpkg tree
 # 
+buildpkgbase=${BUILDPKG_BASE-'x'}
+if [ "$buildpkgbase" == "x" ]; then
+    echo "You *Must* define BUILDPKG_BASE environment variable"
+    exit 1
+fi
 
 # Variables that *must* be overridden pr. package
 # They are used to construct paths and more so they
@@ -44,7 +52,7 @@ LS=/usr/bin/ls
 EXPR=/usr/bin/expr
 
 # Define defaults
-buildpkgbase=${HOME}/buildpkg
+buildpkgbase=$BUILDPKG_BASE
 stagedir=$buildpkgbase/$topdir/stage
 srcdir=$buildpkgbase/$topdir/src
 patchdir=$srcdir # Allow the possibility of easily putting a load of patches in a different location

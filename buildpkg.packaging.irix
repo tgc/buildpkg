@@ -24,7 +24,7 @@ declare -a pctop # Array of toplevel product categories (image)
 declare -a pdtop # Array of matching descriptions
 
 #override defaults
-pkgprefix=sb_
+pkgprefix=tgc_
 pkgname=$pkgprefix$topdir
 
 os=irix`$UNAME -r`
