@@ -366,19 +366,26 @@ check_unpackaged()
 {
     local upf
     local i
+    local indent4="    "
+
     $FIND . -type f -print|$SED -e 's/\.\///g' > $tmpdir/files.tmp
     $FIND . -type l -print|$SED -e 's/\.\///g' >> $tmpdir/files.tmp
     $FIND . -type d -print|$SED -e 's/\.\///g'|$GREP -v '^\.' >> $tmpdir/files.tmp
     $SORT $metadir/files.tmp|$UNIQ > $tmpdir/f1
     $SORT $tmpdir/files.tmp > $tmpdir/f2
     if [ ! "$($CMP $tmpdir/f1 $tmpdir/f2)" == "" ]; then
-	upf="$($DIFF -u $tmpdir/f1 $tmpdir/f2)"
-	for i in $upf
-	do
-	    echo $i
-	done
-	$RM -f $tmpdir/f1 $tmpdir/f2
-	error $E_UNPACKAGED_FILES check_unpackaged
+	upf="$($CAT $tmpdir/f1 $tmpdir/f2 | $SORT | $UNIQ -u)"
+        if [ ! -z "$upf" ]; then
+            echo "There are unpackaged files in the stagedir:"
+            for i in $upf
+            do
+                echo "${indent4}${i}"
+            done
+        fi
+        $RM -f $tmpdir/f1 $tmpdir/f2
+        if [ "$ignore_unpackaged_files" -eq 0 ]; then
+            error $E_UNPACKAGED_FILES check_unpackaged
+        fi
     fi
     $RM -f $tmpdir/f1 $tmpdir/f2
 }
@@ -425,9 +432,7 @@ generic_pack()
 	setdir "$stagedir$prefix"
     fi
     parse_def
-    if [ "$ignore_unpackaged_files" -eq 0 ]; then
-	check_unpackaged
-    fi
+    check_unpackaged
     # Create a list of all the packages that we are going to build
     for i in $(list_pkgs)
     do
