@@ -60,6 +60,7 @@ UNIQ=/bin/uniq
 BASENAME=/bin/basename
 DIRNAME=/bin/dirname
 TR=/bin/tr
+DIFF=/usr/local/bin/diff # *Must* support -u (like GNU Diff)
 
 # Groff stuff for manpages
 NEQN=/usr/local/bin/neqn
