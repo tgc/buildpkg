@@ -8,7 +8,7 @@
 
 REQ_DIRS="stage src meta"
 
-local arg1=${1-'x'}
+arg1=${1-'x'}
 if [ "$arg1" == "x" ]; then
     error $E_MISSING_ARGS
 else
