@@ -123,6 +123,8 @@ dostrip_elf=1   # default to stripping binaries during the install stage
 dostrip_shared=1 # default to stripping shared objects during the install stage
 dostrip_static=1 # default to stripping static archives during the install stage
 shortroot=0 # Deep or shallow stagedir?
+autonuke=1 # Automatically attempt to cleanout unwanted files after make install?
+	    # eg. info/dir, lib/*.la
 
 # This is meant to aid custom install functions that wants
 # to skip the clean stage & make install parts of generic_install
@@ -352,6 +354,44 @@ do_strip()
     fi
     if [ $dostrip_static -eq 1 ]; then
 	do_strip_static
+    fi
+}
+
+# do_autonuke(): Kill unwanted files after make install
+# params: none
+# Automatically switches to $stagedir/$prefix
+# On exit cwd is $stagedir/$prefix
+do_autonuke()
+{
+    local i
+    local didnuke=0
+    echo "Autonuking..."
+
+    setdir ${stagedir}${prefix}
+    if [ -d "${_infodir}" ]; then
+	if [ -r ${_infodir}/dir ]; then
+	    echo "Nuking ${_infodir}/dir"
+	    ${RM} -f ${_infodir}/dir
+	    didnuke=1
+	fi
+    fi
+     if [ -d "${_libdir}" ]; then
+	if [ -r ${_libdir}/charset.alias ]; then
+	    echo "Nuking ${_libdir}/charset.alias"
+	    ${RM} -f ${_libdir}/charset.alias
+	    didnuke=1
+	fi
+    fi
+    if [ -d "${_libdir}" -a ! -z "$($LS ${_libdir}/*.la)" ]; then
+	for i in ${_libdir}/*.la
+	do
+	    echo "Nuking $i"
+	    ${RM} -f "$i"
+	done
+	didnuke=1
+    fi
+    if [ $didnuke -eq 0 ]; then
+	echo "Found nothing to nuke"
     fi
 }
     
@@ -590,6 +630,9 @@ generic_install()
     fi
     if [ $dostrip -eq 1 ]; then
        do_strip
+    fi
+    if [ $autonuke -eq 1 ]; then
+	do_autonuke
     fi
 }
 
