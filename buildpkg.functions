@@ -443,7 +443,7 @@ doc()
 	else
 	    ddir=$stagedir/$prefix/$_docdir/$topdir-$version
 	fi
-	mkdir -p $dddir
+	${MKDIR} -p $ddir
 	echo "Adding docs"
 	until [ -z "$1" ]
 	do
