@@ -7,6 +7,9 @@
 # generic tools go in buildpkg.functions
 GENDIST=/usr/sbin/gendist
 
+GZIP=/usr/people/tgc/bin/gzip
+BZIP2=/usr/local/bin/bzip2
+
 # Configuration vars
 imageconf=$buildpkgbase/scripts/image.conf
 subsysconf=$buildpkgbase/scripts/subsys.conf
