@@ -128,56 +128,6 @@ spec_subsys_footer()
     echo "$indent8 endsubsys"
 }
 
-# compute_octal()
-# Description: Computes the octal value from a permission list (_rwxrwxrwx)
-# param: $1=permission list
-# Caveats: It won't pickup sticky bit and mandatory locking bit
-compute_octal()
-{
-	perm=$1
-	v=0; d1=0; d2=0; d3=0; d4=0
-	# User part
-	if [ "${perm:1:1}" == "r" ]; then
-		let "v = v + 4" # set read bit
-	fi
-	if [ "${perm:2:1}" == "w" ]; then
-		let "v = v + 2" # set write bit
-	fi
-	if [ "${perm:3:1}" == "x" ]; then
-		let "v = v + 1" # set executable bit
-	elif [ "${perm:3:1}" == "s" ]; then
-		let "v = v + 1" # set executable bit
-		let "d1 = d1 + 4" # Set setuid bit
-	fi
-	d2=$v; v=0
-	# Group part
-	if [ "${perm:4:1}" == "r" ]; then
-		let "v = v + 4" # set read bit
-	fi
-	if [ "${perm:5:1}" == "w" ]; then
-		let "v = v + 2" # set write bit
-	fi
-	if [ "${perm:6:1}" == "x" ]; then
-		let "v = v + 1" # set executable bit
-	elif [ "${perm:6:1}" == "s" ]; then
-		let "v = v + 1" # set executable bit
-		let "d1 = d1 + 2" # Set setgid bit
-	fi
-	d3=$v; v=0;
-	# Other part
-	if [ "${perm:7:1}" == "r" ]; then
-		let "v = v + 4" # set read bit
-	fi
-	if [ "${perm:8:1}" == "w" ]; then
-		let "v = v + 2" # set write bit
-	fi
-	if [ "${perm:9:1}" == "x" ]; then
-		let "v = v + 1" # set executable bit
-	fi
-	d4=$v; v=0
-	echo $d1$d2$d3$d4
-}
-
 # check_hide(): Should the file be "hidden"
 # params: $1=file to check against $hide
 check_hide()
