@@ -19,17 +19,18 @@
 # patch[0..x] = patch filenames - patch[0] must be defined but *can* be empty
 #		pr. default we expect these to be listed relative to $srcdir
 #		filenames that begin with / will be treated as absolute paths
-#		All patching will be done from *within* $srcdir/$topdir directory with patch -p1
+#		All patching will be done from *within* $srcdir/$tarname directory with patch -p1
+#		patches must be in uncompressed format
 
 # Define tool programs
-pkgmk=/usr/bin/pkgmk
-pkgtrans=/usr/bin/pkgtrans
-strip=/usr/ccs/bin/strip
-uname=/usr/bin/uname
-tar=/usr/local/bin/tar # GNU tar please!
-bzip2=/usr/bin/bzip2
-gzip=/usr/bin/gzip
-patch=/usr/local/bin/patch # GNU patch 2.5 or better please!
+PKGMK=/usr/bin/pkgmk
+PKGTRANS=/usr/bin/pkgtrans
+STRIP=/usr/ccs/bin/strip
+UNAME=/usr/bin/uname
+TAR=/usr/local/bin/tar # GNU tar please!
+BZIP2=/usr/bin/bzip2
+GZIP=/usr/bin/gzip
+PATCH=/usr/local/bin/patch # GNU patch 2.5 or better please!
 
 # Define defaults
 buildpkgbase=${HOME}/buildpkg
@@ -46,7 +47,7 @@ prefix=$topinstalldir
 
 pkgname=SB$topdir
 cpu=sparcv9
-os=sol`$uname -s`
+os=sol`$UNAME -s`
 pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
 
 # Distfiles should be named like this
@@ -56,10 +57,17 @@ distfile=$topdir-$version-$pkgver.sb-$os-$cpu-$pkgdirdesig
 
 # Define error codes and texts
 E_MISSING_STAGEDIR=30
-E_BAD_SOURCE=31
 E_BAD_FILE=32
+E_PATCH_FAILED=33
+E_BAD_DIR=34
+E_BAD_UNPACK=35
+E_BAD_COMPRESS=36
 
 error_txt[$E_BAD_FILE]="File not found"
+error_txt[$E_PATCH_FAILED]="Patch failed"
+error_txt[$E_BAD_DIR]="Directory not found"
+error_txt[$E_BAD_UNPACK]="Unable to decompress sourcearchive"
+error_txt[$E_BAD_COMPRESS]="Unknown compression method"
 
 # 
 # Helper functions
@@ -69,8 +77,8 @@ error_txt[$E_BAD_FILE]="File not found"
 # params: $1 = errorcode
 error()
 {
-    if [ ! -z $error_txt[$1] ]; then
-	echo "$1: $error_txt[$1]"
+    if [ ! -z "${error_txt[$1]}" ]; then
+	echo "$1: ${error_txt[$1]}"
     fi
     exit $1
 }
@@ -79,46 +87,102 @@ error()
 # params: $1 = patch number (arrayindex) $2 = patch params (defaults to -p1)
 # It will verify the existence of the patch file passed to it and
 # exit gracefully if it cannot be found.
+# An empty $2 argument will be treated as undefined
 patch()
 {
-    cd $srcdir/$tarname
-    if [ ! -z $patch[$1] ]; then
-	if [ ! "${patch[$1]:1:1}" == "/" ]; then # We have a relative pathname
+    local pnum=$1
+    local p2=$2
+    local pparam=${p2:-"-p1"}
+    
+    echo "Switching to $srcdir/$tarname"
+    if [ -d "$srcdir/$tarname" ]; then
+	cd $srcdir/$tarname
+    else
+	error $E_BAD_DIR
+    fi
+
+    if [ ! -z ${patch[$pnum]} ]; then # They didn't give us an empty string
+	if [ ! "${patch[$pnum]:0:1}" == "/" ]; then # We have a relative pathname
 	    # expand to absolute
-	    $patch[$1]=$srcfiles/$patch[$1]
-	fi # We are now sure that $patch[$1] contains file with absolute path
-	echo "Processing patch[$1] - $patch[$1]"
-	if [ -r $patch[$1] ]; then # file is readable
-	    # unpack
+	    patch[$pnum]=$srcdir/${patch[$pnum]}
+	fi # We are now sure that $patch[$pnum] contains file with absolute path
+	echo "Processing patch[$pnum] - ${patch[$pnum]}"
+	if [ -r ${patch[$pnum]} ]; then # file is readable
+	    $PATCH -Es $2 < ${patch[$pnum]}
+	    if [ $? -ne 0 ]; then
+		error $E_PATCH_FAILED
+	    fi
 	else
 	    error $E_BAD_FILE
 	fi
+    else
+	echo "No such patchnumber defined - $1"
     fi
-
 }
 
+# unpack(): Unpack source
+# params: $1 = source number (arrayindex)
+# It will detect filetype and unpack
+# .tar, .tgz, .gz, .bz2 and .Z supported
 unpack()
 {
+    local snum=$1
+    echo "Switching to $srcdir"
+    if [ -d $srcdir ]; then
+	cd $srcdir
+    else
+	error $E_BAD_DIR
+    fi
+    if [ ! "${source[$snum]:0:1}" == "/" ]; then # We have a relative pathname
+	# expand to absolute
+	source[$snum]=$srcfiles/${source[$snum]}
+    fi # We are now sure that ${source[$snum]} contains file with absolute path
+    echo "Unpacking ${source[$snum]}"
+    if [ -r ${source[$snum]} ]; then # file is readable
+	local absfilename=${source[$snum]}
+	local filename=${absfilename##/*/} # Strip down to the filename
+	local suffix=${filename##*.} # Strip down to filename suffix (strip down to the last .)
+
+	# Determine filetype and unpack
+	case $suffix in
+	    'tar') $TAR -xf ${source[$snum]};;
+	    'gz') $GZIP -dc ${source[$snum]} | $TAR -xf -;;
+	    'bz2') $BZIP2 -dc ${source[$snum]} | $TAR -xf -;;
+	    'Z') $GZIP -dc ${source[$snum]} | $TAR -xf -;;
+	    'tgz') $GZIP -dc ${source[$snum]} | $TAR -xf -;;
+	    *) error $E_BAD_COMPRESS
+	esac
+	if [ $? -ne 0 ]; then
+	    error $E_BAD_UNPACK
+	fi
+    else
+	error $E_BAD_FILE
+    fi
 }
+
+#
 # Define generic functions for different build stages
 #
 
-# generic_prep(): Unpack source and and apply any patches
+# generic_prep(): Unpack source and apply any patches
 # params: none
 generic_prep()
 {
-    cd $srcdir
-    # unpack source
-    if [ ! "${source[0]:1:1}" == "/" ]; then # We have a relative pathname
-	# expand to absolute
-	$source[0]=$srcfiles/$source[0]
-    fi # We are now sure that $source[0] contains file with absolute path
-    if [ -r $source[0] ]; then # file is readable
-	# unpack
-    else
-	exit $E_BAD_SOURCE
-    fi
-    for i in 
+    unpack 0 
+    # Patching
+    local numpatch=${#patch[@]}
+    local i=0
+# Argh! - The C-style for loop doesn't work in bash-2.0.3 as distributed
+# with Solaris 8 :( (it works just fine on Redhat Linux 7.3, bash 2.0.5a)
+#    for ((i=0; i < numpatch; i++))
+#    do
+#	patch $i -p1
+#    done
+    while [ $i -lt $numpatch ]
+    do
+	patch $i -p1
+	let i=i+1
+    done
 }
 
 # generic_build(): Take the necessary steps to build already prepared source
@@ -127,6 +191,7 @@ generic_prep()
 # It may be necessary to set this if it differs from $topdir-$version
 generic_build()
 {
+echo
 }
 
 # generic_install(): Install already built source
@@ -134,12 +199,12 @@ generic_install()
 {
 if [ -z "$stagedir" ]; then
     exit $E_MISSING_STAGEDIR
-else
-    
+fi
 }
 
 # generic_pack(): Build package using files from 'install' stage
 generic_pack()
 {
+echo
 }
 
