@@ -63,6 +63,7 @@ FILE=/usr/bin/file # Used by do_strip()
 PRINTF=/usr/bin/printf
 LN=/usr/bin/ln
 GINSTALL=/usr/local/bin/install # BSD compatible install - usually GNU install
+COMPRESS=/usr/bsd/compress
 
 # Groff stuff for manpages
 NROFF=/usr/local/bin/nroff
@@ -114,7 +115,8 @@ pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
 
 # Functionality controls
 catman=0   # Don't fix manpages pr. default
-gzman=0	    # Don't compress man pages pr. default
+gzman=0	    # Don't gzip man pages pr. default
+compressman=0 # Don't compress(1) man pages pr. default
 gzinfo=1    # Compress infopages pr. default
 dostrip=1
 dostrip_elf=1   # default to stripping binaries during the install stage
@@ -393,6 +395,15 @@ fix_man()
 # Run from 'cwd' where 'cwd' contains catX/manX subdirs
 compress_man()
 {
+    if [ "$gzman" -eq 1 ]; then # Use gzip
+	local compsuffix=gz
+	local pack=$GZIP
+    fi
+    if [ "$compressman" -eq 1 ]; then # Use compress(1)
+	local compsuffix=Z
+	local pack="$COMPRESS -f"
+    fi
+
     echo "Compressing manpages"
     for i in [cm]a[nt]?
     do
@@ -404,10 +415,10 @@ compress_man()
 		if [ "$suffix" != "gz" -a "$suffix" != "Z" ]; then #probably uncompressed...
 		    if [ -L "$manpage" ]; then
 			TARGET=$($LS -l "$manpage" | $AWK '{ print $NF }')
-			$LN -sf "$TARGET".gz "$manpage".gz
+			$LN -sf "$TARGET".$compsuffix "$manpage".$compsuffix
 			$RM -f "$manpage"
 		    else
-			$GZIP "$manpage"
+			$pack "$manpage"
 		    fi
 		fi
 	    done

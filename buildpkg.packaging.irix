@@ -28,6 +28,7 @@ catman=1
 
 # Compress manpages
 gzman=1
+compressman=0
 
 # strip?
 dostrip=1
@@ -852,7 +853,7 @@ generic_pack()
     if [ -d ${stagedir}${prefix}/${_mandir} ]; then
 	setdir "${stagedir}${prefix}/${_mandir}"
 	[ "$catman" -eq 1 ] && fix_man
-	[ "$gzman" -eq 1 ] && compress_man
+	[ "$gzman" -eq 1 -o "$compressman" -eq 1 ] && compress_man
     fi
     if [ -d ${stagedir}${prefix}/${_infodir} ]; then
 	setdir "${stagedir}${prefix}/${_infodir}"
