@@ -41,12 +41,13 @@ pkgname=$pkgprefix$topdir
 
 os=irix`$UNAME -r`
 cpu=mips3
-distfile=$topdir-$version-$pkgver.tgc-$os-$cpu-$pkgdirdesig.tardist
 
 META_CLEAN="$topdir.spec $topdir.idb"
 
 # Host specific configuration
 [ -r $buildpkgbase/scripts/config.`hostname`.irix ] && . $buildpkgbase/scripts/config.`hostname`.irix
+
+distfile=$topdir-$version-$pkgver.tgc-$os-$cpu-$pkgdirdesig.tardist
 
 ##################################################### 
 # Internal helper functions
