@@ -45,7 +45,7 @@ cpu=mips3
 META_CLEAN="$topdir.spec $topdir.idb"
 
 # Host specific configuration
-[ -r $buildpkgbase/scripts/config.`hostname`.irix ] && . $buildpkgbase/scripts/config.`hostname`.irix
+[ -r $buildpkgbase/scripts/config.`hostname -s`.irix ] && . $buildpkgbase/scripts/config.`hostname -s`.irix
 
 distfile=$topdir-$version-$pkgver.tgc-$os-$cpu-$pkgdirdesig.tardist
 
