@@ -1,0 +1,31 @@
+PACKAGE NAME
+------------
+
+%%PKGNAME%%
+
+SOURCE/VERSION
+--------------
+
+%%SOURCE_AND_VER%%
+
+BUILD ENVIRONMENT
+-----------------
+No special build variables where set
+
+compiler and version:
+%%COMPILER%%
+
+CONFIGURE/MAKE FLAGS/TARGETS
+----------------------------
+
+%%CONFIGURE%%
+<if you've overridden configure_args then you need to update this manually>
+
+KNOWN DEPENDANCIES
+------------------
+none
+
+ERRORS/MISCELLANEOUS
+--------------------
+none
+<Comments and instructions can be put here>

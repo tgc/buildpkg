@@ -39,9 +39,14 @@ usedepend=1 # Don't use depend file even if it's available
 usescripts=1 # Don't add ops even if they're available
 ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area
 
+# ver_width controls the width of the pkgversion numbers created
+# do *not* change this blindly
+ver_width=8
+
 # Comment these declarations to get it to run with ksh
 declare -a pc # Array of product categories (image.subsys)
 declare -a pd # Array of matching descriptions
+declare -a ps # Array of subsystem properties - default or nodefault
 declare -a pctop # Array of toplevel product categories (image)
 declare -a pdtop # Array of matching descriptions
 declare -a reqs # Array of subsystems with prereqs
@@ -77,9 +82,13 @@ indent24="                       "
 # fix_ver(): "normalize" a version-pkgver pair
 # params: $1=version
 # Removes any '.' and '-' characters from a version string
+# It also extends the width to $ver_width by padding with zeroes on the
+# right side
 fix_ver()
 {
     local ver=`echo $1 | $SED -e 's/\.//g' -e 's/-//g' -e 's/[a-zA-Z]//g'`
+    let "numpad = $ver_width - ${#ver}"
+    ver="$($PRINTF "%s%.0${numpad}u" $ver 0)"
     echo $ver
 }
 # spec_header()
@@ -109,10 +118,10 @@ spec_img_footer()
     echo "$indent4 endimage"
 }
 # spec_subsys_header()
-# param: $1=image $2=subsys $3=description
+# param: $1=image $2=subsys $3=description $4=subsys property
 spec_subsys_header()
 {
-    echo "$indent8 subsys $2 default"
+    echo "$indent8 subsys $2 $4"
     echo "$indent12 id \"$3\""
     echo "$indent12 replaces self"
     echo "$indent12 exp $pkgname.$1.$2"
@@ -272,13 +281,21 @@ fetch_subsysdesc()
 {
     local i=0
     local numloops=${#pc[@]} 
+    local ss
+    local sp
+    local desc
 
-    while read ss desc
+    while read ss sp desc
     do
 	for ((i=0; i < $numloops; i++)) # Find subsystem...
 	do
 	    if [ "${pc[$i]}" = "$ss" ]; then
 		pd[$i]="$desc"
+		if [ "$sp" == "nodefault" ]; then
+		    ps[$i]=""
+		else
+		    ps[$i]=$sp
+		fi
 		break 	# Found it, skip to the next line
 	    fi
 	done
@@ -445,7 +462,7 @@ create_spec()
 	do
 	    rv=`$EXPR match "${pc[$pcidx]}" ''${pctop[$i]}''`
 	    if [ ! "$rv" -eq 0 ]; then # We got a hit!
-		spec_subsys_header ${pctop[$i]} `echo ${pc[$pcidx]}|$CUT -d . -f 2` "${pd[$pcidx]}" >> $specfile
+		spec_subsys_header ${pctop[$i]} `echo ${pc[$pcidx]}|$CUT -d . -f 2` "${pd[$pcidx]}" "${ps[$pcidx]}" >> $specfile
 		reqsize=${#reqs[@]}
 		declare -a reqidlist
 		reqidlidx=0
@@ -680,7 +697,22 @@ auto_src()
 # and then copy the result to $stagedir/$prefix/relnotes/$topdir-$version-$pkgver.txt
 auto_rel()
 {
-    echo "auto_rel() is unimplemented"
+    if [ -r $metadir/relnotes ]; then
+	local relmetadir=relnotes/$topdir-$version-$pkgver
+	local cf="$(_upls $configure_args)"
+	local fullcf="./configure $cf"
+	local compiler="gcc $(gcc --version 2>&1)"
+	local pkgnam_temp=$(grep 'pkgname=' $metadir/pkgdef)
+	local pkgnam=$(_upls ${pkgnam_temp#pkgname=*})
+	$MKDIR -p $relmetadir
+	$SED -e "s;%%PKGNAME%%;${pkgnam};g" \
+	    -e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
+	    -e "s;%%CONFIGURE%%;${fullcf};g" \
+	    -e "s;%%COMPILER%%;${compiler};g" \
+		$metadir/relnotes > "$relmetadir/${topdir}.txt"
+    else
+	echo "auto_rel: No release notes found!"
+    fi
 }
 
 # auto_dist(): Add idb & spec files to stagedir
@@ -707,6 +739,9 @@ generic_pack()
     fi
     clean meta
 
+    # Compute manpage location
+    local dir_prefix="${prefix#$topinstalldir*}"
+
     if [ "$shortroot" -eq 1 ]; then
 	if [ $catman -eq 1 -a -d $stagedir/man ]; then
 	    setdir $stagedir/man
@@ -714,8 +749,8 @@ generic_pack()
 	fi
 	setdir stage
     else
-	if [ $catman -eq 1 -a -d $stagedir$topinstalldir/man ]; then
-	    setdir $stagedir$topinstalldir/man
+	if [ $catman -eq 1 -a -d ${stagedir}${topinstalldir}${dir_prefix}/man ]; then
+	    setdir ${stagedir}${topinstalldir}${dir_prefix}/man
 	    fix_man
 	fi
 	setdir $stagedir$topinstalldir

@@ -16,23 +16,21 @@ else
 fi
 
 echo "Creating sandbox for $arg1"
-mkdir "$arg1"
+$MKDIR "$arg1"
 for i in $REQ_DIRS
 do
     mkdir $arg1/$i
 done
 
-cp scripts/build.sh.generic $arg1/build.sh
+$CP scripts/build.sh.generic $arg1/build.sh
 chmod 755 $arg1/build.sh
 if [ "$($UNAME -s)" == "IRIX" ]; then
     $SED -e 's/bin\/bash/usr\/local\/bin\/bash/g' $arg1/build.sh > $arg1/build.sh.tmp
     $MV $arg1/build.sh.tmp $arg1/build.sh
+    $CP scripts/pkgdef.template.irix $arg1/meta/pkgdef
+    $CP scripts/relnotes.template.irix $arg1/meta/relnotes
 fi
 
 if [ "$($UNAME -s)" == "SunOS" ]; then
-    cp scripts/pkgdef.template $arg1/meta/pkgdef
-fi
-
-if [ "$($UNAME -s)" == "IRIX" ]; then
-    cp scripts/pkgdef.template.irix $arg1/meta/pkgdef
+    $CP scripts/pkgdef.template $arg1/meta/pkgdef
 fi
