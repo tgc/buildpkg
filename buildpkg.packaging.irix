@@ -41,6 +41,7 @@ strip_static_args="" # GNU default is -g
 usedepend=1 # Don't use depend file even if it's available
 usescripts=1 # Don't add ops even if they're available
 ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area
+include_source=0 # Include source[x] in the opt.src subsystem and not just patch[x]
 
 # ver_width controls the width of the pkgversion numbers created
 # do *not* change this blindly
@@ -635,7 +636,10 @@ parse_def()
 				    fi
 				    ;;
 			'shortdesc')
-				    shortdesc=" $(_upls ${line:$equalindex:${#line}})"
+				    shortdesc="$(_upls ${line:$equalindex:${#line}})"
+				    if [ ! -z "$shortdesc" ]; then
+					shortdesc=" - $shortdesc"
+				    fi
 				    ;;
                     esac
                 else # Perhaps we hit 'files'?
@@ -708,11 +712,11 @@ check_unpackaged()
 auto_src()
 {
     local distsrcdir="${stagedir}${metainstalldir}/src/$topdir-$version-$pkgver"
-    $MKDIR -p $distsrcdir
     # Add patches
     local numpatch=${#patch[@]}
     local pnum=0
     if [ "$numpatch" -gt 0 ]; then
+	$MKDIR -p $distsrcdir
 	for ((pnum=0; pnum < $numpatch; pnum++))
 	do
 	    if [ ! -z ${patch[$pnum]} ]; then # They didn't give us an empty string
@@ -732,19 +736,22 @@ auto_src()
 	done
     fi
     # Add sourcecode
-    local numsource=${#source[@]}
-    local snum=0
-    for ((snum=0; $snum < $numsource; snum++))
-    do
-	if [ "${source[$snum]:0:1}" != "/" ]; then # We have a relative pathname
-	    # expand to absolute
-	    source[$snum]=$srcfiles/${source[$snum]}
-	fi # We are now sure that ${source[$snum]} contains file with absolute path
-	if [ -r ${source[$snum]} ]; then
-	    echo "Copying source[$snum] - ${source[$snum]}"
-	    $CP ${source[$snum]} $distsrcdir
-	fi
-    done
+    if [ $include_source -eq 1 ]; then
+	$MKDIR -p $distsrcdir
+	local numsource=${#source[@]}
+	local snum=0
+	for ((snum=0; $snum < $numsource; snum++))
+	do
+	    if [ "${source[$snum]:0:1}" != "/" ]; then # We have a relative pathname
+		# expand to absolute
+		source[$snum]=$srcfiles/${source[$snum]}
+	    fi # We are now sure that ${source[$snum]} contains file with absolute path
+	    if [ -r ${source[$snum]} ]; then
+		echo "Copying source[$snum] - ${source[$snum]}"
+		$CP ${source[$snum]} $distsrcdir
+	    fi
+	done
+    fi
 }
 
 # auto_rel(): Fix up and add releasenotes to stagedir
@@ -807,17 +814,26 @@ generic_pack()
     local dir_prefix="${prefix#$topinstalldir*}"
 
     if [ "$shortroot" -eq 1 ]; then
-	if [ $catman -eq 1 -a -d $stagedir/man ]; then
-	    setdir $stagedir/man
+	if [ $catman -eq 1 -a -d $stagedir/${_mandir} ]; then
+	    setdir $stagedir/${_mandir}
 	    fix_man
 	    [ "$gzman" -eq 1 ] && compress_man
 	fi
+	if [ $gzinfo -eq 1 -a -d ${stagedir}/${_infodir} ]; then
+	    setdir $stagedir/${_infodir}
+	    compress_info
+	fi
 	setdir stage
+	metainstalldir=/
     else
-	if [ $catman -eq 1 -a -d ${stagedir}${topinstalldir}${dir_prefix}/man ]; then
-	    setdir ${stagedir}${topinstalldir}${dir_prefix}/man
+	if [ $catman -eq 1 -a -d ${stagedir}${topinstalldir}${dir_prefix}/${_mandir} ]; then
+	    setdir ${stagedir}${topinstalldir}${dir_prefix}/${_mandir}
 	    fix_man
 	    [ "$gzman" -eq 1 ] && compress_man
+	fi
+	if [ $gzinfo -eq 1 -a -d ${stagedir}/${_infodir} ]; then
+	    setdir $stagedir/${_infodir}
+	    compress_info
 	fi
 	setdir $stagedir$topinstalldir
     fi
