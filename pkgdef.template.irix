@@ -4,22 +4,28 @@ name="$topdir"
 pkgver="$pkgver"
 
 [base]
-subsys=sw.base
+subsys=sw.eoe
 files(-,root,sys)
 $_bindir
 $_sharedir
-$_libdir/*.so.*
 $_docdir
 
+[lib]
+subsys=sw.lib
+files(-,root,sys)
+$_libdir/*.so.*
+
 [man]
-subsys=man.manpages
+subsys=man.man
 files(-,root,sys)
 $_mandir
 $_infodir
 
 [devel]
-subsys=sw.devel
+subsys=sw.dev
 files(-,root,sys)
 $_includedir
 $_libdir/*.so
 $_libdir/*.a
+$_libdir/*.la
+
