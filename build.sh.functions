@@ -1,0 +1,58 @@
+#
+# Function library for build.sh
+#
+# This is only for build.sh helper functions.
+#
+# The concept of "method" registering and the logic that implements it was
+# stolen from jhlj's Compile.sh script :)
+#
+
+# Define script functions and register them
+METHODS=""
+reg() {
+    METHODS="$METHODS $1"
+}
+
+all()
+{
+    for METHOD in $METHODS 
+    do
+        case $METHOD in
+             all*|*clean) ;;
+             *) $METHOD
+                ;;
+        esac
+    done
+
+}
+
+usage() {
+    echo Usage $0 "{"$(echo $METHODS | tr " " "|")"}"
+    exit 1
+}
+
+build_sh() {
+    # Register internal functions last
+    # The empty reg is trickery to get exactly 1 space at each end of the METHODS string
+    reg all 
+    reg
+    #
+    local OK=0
+    for METHOD in $*
+    do
+	METHOD=" $METHOD *"
+	if [ "${METHODS%$METHOD}" == "$METHODS" ] ; then
+	    usage
+	fi
+	OK=1
+    done
+
+    if [ $OK = 0 ] ; then
+	usage;
+    fi
+
+    for METHOD in $*
+    do
+	( $METHOD )
+    done
+}
