@@ -16,7 +16,7 @@
 #		pr. default we will look for source[0] relative to $srcfiles
 #		A filename that begin with / will be treated as absolute paths
 #		Note! only source[0] will be automatically unpacked
-# patch[0..x] = patch filenames - patch[0] must be defined but *can* be empty
+# patch[0..x] = patch filenames - if patch[0] is undefined then generic_prep won't attempt to patch the source
 #		pr. default we expect these to be listed relative to $srcdir
 #		filenames that begin with / will be treated as absolute paths
 #		All patching will be done from *within* $srcdir/$topsrcdir directory with patch -p1
@@ -25,6 +25,7 @@
 # Define tool programs
 PKGMK=/usr/bin/pkgmk
 PKGTRANS=/usr/bin/pkgtrans
+PKGPROTO=/usr/bin/pkgproto
 STRIP=/usr/ccs/bin/strip
 UNAME=/usr/bin/uname
 TAR=/usr/local/bin/tar # GNU tar please!
@@ -34,25 +35,28 @@ PATCH=/usr/local/bin/patch # GNU patch 2.5 or better please!
 RM=/usr/bin/rm
 MKDIR=/usr/bin/mkdir
 MAKE_PROG=/usr/local/bin/make # GNU make please!
-FIND=/usr/bin/find
+FIND=/usr/bin/find # Solaris find - GNU find will require changes to the script
 XARGS=/usr/bin/xargs
+CAT=/usr/bin/cat
+AWK=/usr/bin/nawk # This must be nawk or GNU awk - /usr/bin/awk will *not* work
+SED=/usr/bin/sed
 
 # Define defaults
 buildpkgbase=${HOME}/buildpkg
 stagedir=$buildpkgbase/$topdir/build
 srcdir=$buildpkgbase/$topdir/src
 metadir=$buildpkgbase/$topdir/meta
+distdir=$buildpkgbase/distfiles
 topsrcdir=$topdir-$version # it may be necessary to override this
 
 srcfiles=$buildpkgbase/srcfiles
 
-# defaults used for prepping the source
 topinstalldir=/usr/local
 prefix=$topinstalldir
 
 pkgname=SB$topdir
 cpu=sparcv9
-os=sol`$UNAME -s`
+os=sol`$UNAME -r`
 pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
 
 # Distfiles should be named like this
@@ -62,6 +66,7 @@ distfile=$topdir-$version-$pkgver.sb-$os-$cpu-$pkgdirdesig
 
 # Define error codes and texts
 E_MISSING_STAGEDIR=30
+E_MISSING_ARGS=31
 E_BAD_FILE=32
 E_PATCH_FAILED=33
 E_BAD_DIR=34
@@ -79,6 +84,7 @@ error_txt[$E_BAD_UNPACK]="Unable to decompress sourcearchive"
 error_txt[$E_BAD_COMPRESS]="Unknown compression method"
 #error_txt[$E_BAD_CONFIG]="configure failed"
 #error_txt[$E_BAD_MAKE]="make failed"
+error_txt[$E_MISSING_ARGS]="A required argument was missing"
 
 # 
 # Helper functions
@@ -94,17 +100,22 @@ error()
     exit $1
 }
 
-# setdir(): switch tsetdir "$srcdir"o a directory, but check destination first
-# params: $1=dir to cd to
+# setdir(): switch to a directory, but check destination first
+# params: $1=dir to cd to [source|stage] can be used as shortcuts
 # Switches to the directory in $1 but first checks if the destination exists
 setdir()
 {
-    echo "Switching to $1"
-    if [ -z "$1" ]; then
+    local dir=$1
+    case $dir in
+	'source')   dir="$srcdir/$topsrcdir";;
+	'stage')    dir="$stagedir";;
+    esac
+    echo "Switching to $dir"
+    if [ -z "$dir" ]; then
 	error $E_BAD_DIR setdir
     fi
-    if [ -d "$1" ]; then
-	cd "$1"
+    if [ -d "$dir" ]; then
+	cd "$dir"
     else
 	error $E_BAD_DIR setdir
     fi
@@ -121,8 +132,8 @@ patch()
     local pnum=$1
     local p2=$2
     local pparam=${p2:-"-p1"}
-    
-    setdir $srcdir/$topsrcdir
+
+    setdir source
 
     if [ ! -z ${patch[$pnum]} ]; then # They didn't give us an empty string
 	if [ "${patch[$pnum]:0:1}" != "/" ]; then # We have a relative pathname
@@ -207,11 +218,11 @@ clean()
 # On exit cwd is $stagedir
 strip()
 {
-    setdir "$stagedir"
+    setdir stage
     $FIND . -type f -perm -700 | $XARGS $STRIP
-    if [ $? -ne 0 ]; then
-	error $E_BAD_STRIP strip
-    fi
+#    if [ $? -ne 0 ]; then
+#	error $E_BAD_STRIP strip
+#    if
 }
     
 #
@@ -224,27 +235,33 @@ generic_prep()
 {
     clean source
     unpack 0 
-    # Patching
-    local numpatch=${#patch[@]}
-    local i=0
-# Argh! - The C-style for loop doesn't work in bash-2.0.3 as distributed
-# with Solaris 8 :( (it works just fine on Redhat Linux 7.3, bash 2.0.5a)
-#    for ((i=0; i < numpatch; i++))
-#    do
-#	patch $i -p1
-#    done
-    while [ $i -lt $numpatch ]
-    do
-	patch $i -p1
-	let i=i+1
-    done
+
+    # Verify that ${patch[$pnum]} is defined
+    local pver=${patch[0]-'x'}
+    if [ "$pver" == "x" ]; then
+	return # it was undefined
+    else
+	local numpatch=${#patch[@]}
+	local i=0
+	# Argh! - The C-style for loop doesn't work in bash-2.0.3 as distributed
+	# with Solaris 8 :( (it works just fine on Redhat Linux 7.3, bash 2.0.5a)
+	#    for ((i=0; i < numpatch; i++))
+	#    do
+	#	patch $i -p1
+	#    done
+	while [ $i -lt $numpatch ]
+	do
+	    patch $i -p1
+	    let i=i+1
+	done
+    fi
 }
 
 # generic_build(): Take the necessary steps to build already prepared source
 # params: none
 generic_build()
 {
-    setdir "$srcdir/$topsrcdir"
+    setdir source
 
     ./configure --prefix=$prefix
     if [ $? -ne 0 ]; then
@@ -257,10 +274,11 @@ generic_build()
 }
 
 # generic_install(): Install already built source
+# params: none
 generic_install()
 {
     clean stage
-    setdir "$srcdir/$topsrcdir"
+    setdir source
     $MAKE_PROG DESTDIR=$stagedir install
     if [ $? -ne 0 ]; then
 	error $E_BAD_MAKE generic_install
@@ -269,8 +287,90 @@ generic_install()
 }
 
 # generic_pack(): Build package using files from 'install' stage
+# params: $1 - indicating whether or not the root is complete as described below
+# We expect generic_install to have made $stagedir the "root" dir
+# in that all paths below will be complete (ie. /usr/local/bin and not
+# just bin) *unless* $1=shortroot.
 generic_pack()
 {
-echo
+    # Verify if $1 is defined
+    local arg1=${1-'x'}
+    if [ "$arg1" == "x" ]; then
+	setdir "$stagedir$prefix" # it was undefined
+    else
+	setdir "$stagedir"
+    fi
+    pack_info
+    prototype root bin
+    make_pkg
 }
 
+# make_pkg(): Create the final package
+# params: none
+#
+make_pkg()
+{
+    $PKGMK -r `pwd` -d $buildpkgbase/$topdir -o -f $metadir/prototype
+    $PKGTRANS -o -s $buildpkgbase/$topdir $distdir/$distfile $pkgname
+}
+
+# pack_info(): Create the pkginfo file
+# params: none
+# Will create the pkginfo file with pkginfo.in as a template
+# Both the template and the result will be in $metadir
+# Substitutions will be done on pkgname,version & pkgver
+# they will be replaced with the value of their variable counterparts
+pack_info()
+{
+    $SED -e "s#%%pkgname%%#$pkgname#g" \
+	-e "s#%%version%%#$version#g" \
+	-e "s#%%pkgver%%#$pkgver#g" \
+	$metadir/pkginfo.in > $metadir/pkginfo
+}
+
+# prototype(): Create a prototype file for pkgmk
+# params: $1 = owner $2 = group $3 = [script|noscript]
+# $1 &  $2 will list the owner and group that is to be applied to all files
+# $3 will define whether or not to automatically include any post/pre scripts found
+# in $topdir/meta. Pr. default postinstall,preinstall,postremove,preremove are the filenames
+# it will look for.
+prototype()
+{
+    local owner=$1
+    local group=$2
+
+    $FIND . -print|$PKGPROTO > $metadir/prototype.in
+    $CAT $metadir/prototype.in | $AWK -v owner="$owner" -v group="$group" \
+	'{ $5=owner; $6=group; print; }' > $metadir/prototype
+
+    add_meta_file pkginfo "$metadir/pkginfo"
+
+    case $3 in
+	'script')   [ -r $metadir/preinstall ] && add_meta_file preinstall "$metadir/preinstall"
+		    [ -r $metadir/postinstall ] && add_meta_file postinstall "$metadir/postinstall"
+		    [ -r $metadir/preremove ] && add_meta_file preremove "$metadir/preremove"
+		    [ -r $metadir/postremove ] && add_meta_file postremove "$metadir/postremove"
+		    ;;
+	'noscript') ;;
+    esac
+}
+
+# add_meta_file(): add a metafile entry to the prototype file
+# params: $1 = keyword $2 = filename
+# Additions will be done to the file $metadir/prototype
+add_meta_file()
+{
+    local arg1=${1-'x'}
+    if [ "$arg1" == "x" ]; then
+	error $E_MISSING_ARGS add_meta_file
+    fi
+    local arg2=${2-'x'}
+    if [ "$arg2" == "x" ]; then
+	error $E_MISSING_ARGS add_meta_file
+    fi
+    if [ -r "$arg2" ]; then
+	echo "i $arg1=$arg2" >> $metadir/prototype
+    else
+	error $E_BAD_FILE add_meta_file
+    fi
+}
