@@ -283,8 +283,8 @@ generic_pack()
     # Verify if $1 is defined
     local arg1=${1-'x'}
     case $arg1 in 
-	'x')		setdir $stagedir$topinstalldir/man
-			if [ $catman -eq 1 ]; then
+	'x')		if [ $catman -eq 1 -a -d $stagedir$topinstalldir/man ]; then
+			    setdir $stagedir$topinstalldir/man	    
 			    fix_man
 			fi
 			setdir $stagedir$topinstalldir
@@ -292,8 +292,8 @@ generic_pack()
 			create_spec
 			make_dist 
 			;;
-	'shortroot')	setdir $stagedir/man
-			if [ $catman -eq 1 ]; then
+	'shortroot')	if [ $catman -eq 1 -a -d $stagedir/man ]; then
+			    setdir $stagedir/man
 			    fix_man
 			fi
 			setdir stage
