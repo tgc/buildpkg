@@ -15,8 +15,7 @@ fi
 # Variables that *must* be overridden pr. package
 # They are used to construct paths and more so they
 # must have sane values
-# topdir= The toplevel dir name under $buildpkgbase
-#	 It is also used pr. default in the pkgname
+# topdir= The default package dirname, it's used pr. default in pkgname
 #	  and it is also used pr. default as the toplevel name inside the sourcetar ($topsrcdir)
 # version= source version ie. 0.14.2b
 # pkgver= the package revision, an increasing number is recommended but a date could be used instead
@@ -71,11 +70,12 @@ NROFF=/usr/local/bin/nroff
 NROFFOPTS="-c -man"
 
 # Define defaults
+pkgdir=${PWD##*/} # topdir under $BUILDPKG_BASE
 buildpkgbase=$BUILDPKG_BASE
-stagedir=$buildpkgbase/$topdir/stage
-srcdir=$buildpkgbase/$topdir/src
+stagedir=$buildpkgbase/$pkgdir/stage
+srcdir=$buildpkgbase/$pkgdir/src
 patchdir=$srcdir # Allow the possibility of easily putting a load of patches in a different location
-metadir=$buildpkgbase/$topdir/meta
+metadir=$buildpkgbase/$pkgdir/meta
 distdir=$buildpkgbase/distfiles/beta
 topsrcdir=$topdir-$version # it may be necessary to override this
 
@@ -302,8 +302,8 @@ clean()
 			do
 			    META_CLEAN="$META_CLEAN prototype.$secname pkginfo.$secname"
 			    pkgname=$(get_pkgname $secname)
-			    echo "Removing $buildpkgbase/$topdir/$pkgname"
-			    $RM -rf $buildpkgbase/$topdir/$pkgname
+			    echo "Removing $buildpkgbase/$pkgdir/$pkgname"
+			    $RM -rf $buildpkgbase/$pkgdir/$pkgname
 			done
 		    fi
 

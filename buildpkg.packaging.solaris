@@ -71,8 +71,8 @@ make_pkg()
     local pname=$(get_pkgname $secname)
 
     echo "Creating package and transferring it to datastream format"
-    $PKGMK -r `pwd` -d $buildpkgbase/$topdir -o -f $metadir/$prototype
-    $PKGTRANS -o -s $buildpkgbase/$topdir $distdir/$dfile $pname
+    $PKGMK -r `pwd` -d $buildpkgbase/$pkgdir -o -f $metadir/$prototype
+    $PKGTRANS -o -s $buildpkgbase/$pkgdir $distdir/$dfile $pname
     echo "Done. Package was created as $dfile"
 }
 
