@@ -57,7 +57,6 @@ NEQNOPTS="-Tlatin1"
 TBL=/usr/local/bin/tbl
 NROFF=/usr/local/bin/nroff
 NROFFOPTS="-c -man"
-catman=0   # Don't fix manpages pr. default
 
 # Define defaults
 buildpkgbase=$BUILDPKG_BASE
@@ -65,7 +64,7 @@ stagedir=$buildpkgbase/$topdir/stage
 srcdir=$buildpkgbase/$topdir/src
 patchdir=$srcdir # Allow the possibility of easily putting a load of patches in a different location
 metadir=$buildpkgbase/$topdir/meta
-distdir=$buildpkgbase/distfiles
+distdir=$buildpkgbase/distfiles/beta
 topsrcdir=$topdir-$version # it may be necessary to override this
 
 srcfiles=$buildpkgbase/srcfiles
@@ -81,6 +80,10 @@ pkgname=$pkgprefix$topdir # overriding this will be common
 name=$topdir # as will this ditto
 
 pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
+
+# Functionality controls
+catman=0   # Don't fix manpages pr. default
+dostrip=1   # default to stripping binaries during the install stage
 
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
@@ -354,7 +357,9 @@ generic_install()
     if [ $? -ne 0 ]; then
 	error $E_BAD_MAKE generic_install
     fi
-    strip
+    if [ $dostrip -eq 1 ]; then
+       strip
+    fi
 }
 
 # generic_pack(): Build package using files from 'install' stage
