@@ -25,6 +25,9 @@ hidefile=$metadir/hide
 # Preformat manpages since Irix is not likely to have nroff available
 catman=1
 
+# Compress manpages
+gzman=1
+
 # strip?
 dostrip=1
 
@@ -807,12 +810,14 @@ generic_pack()
 	if [ $catman -eq 1 -a -d $stagedir/man ]; then
 	    setdir $stagedir/man
 	    fix_man
+	    [ "$gzman" -eq 1 ] && compress_man
 	fi
 	setdir stage
     else
 	if [ $catman -eq 1 -a -d ${stagedir}${topinstalldir}${dir_prefix}/man ]; then
 	    setdir ${stagedir}${topinstalldir}${dir_prefix}/man
 	    fix_man
+	    [ "$gzman" -eq 1 ] && compress_man
 	fi
 	setdir $stagedir$topinstalldir
     fi
