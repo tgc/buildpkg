@@ -53,7 +53,6 @@ MV=/usr/bin/mv
 MKDIR=/usr/bin/mkdir
 CP=/usr/bin/cp
 TEE=/bin/tee
-CMP=/bin/cmp
 GREP=/bin/grep
 UNIQ=/bin/uniq
 BASENAME=/bin/basename
@@ -364,7 +363,7 @@ fix_man()
 	    do
 		if [ -L "$manpage" ]; then
 		    TARGET=$($LS -l "$manpage" | $AWK '{ print $NF }')
-		    $LN -snf "$TARGET".gz "$manpage".gz
+		    $LN -sf "$TARGET".gz "$manpage".gz
 		    $MV "$manpage".gz "../$catdir"
 		    $RM -f "$manpage"
 		else
