@@ -17,7 +17,7 @@
 #		A filename that begin with / will be treated as absolute paths
 #		Note! only source[0] will be automatically unpacked
 # patch[0..x] = patch filenames - if patch[0] is undefined then generic_prep won't attempt to patch the source
-#		pr. default we expect these to be listed relative to $srcdir
+#		pr. default we expect these to be listed relative to $patchdir (default $srcdir)
 #		filenames that begin with / will be treated as absolute paths
 #		All patching will be done from *within* $srcdir/$topsrcdir directory with patch -p1
 #		patches must be in uncompressed format
@@ -45,6 +45,7 @@ SED=/usr/bin/sed
 buildpkgbase=${HOME}/buildpkg
 stagedir=$buildpkgbase/$topdir/stage
 srcdir=$buildpkgbase/$topdir/src
+patchdir=$srcdir # Allow the possibility of easily putting a load of patches in a different location
 metadir=$buildpkgbase/$topdir/meta
 distdir=$buildpkgbase/distfiles
 topsrcdir=$topdir-$version # it may be necessary to override this
@@ -131,7 +132,6 @@ setdir()
     fi
 }
 
-#
 # patch(): patch unpacked source
 # params: $1 = patch number (arrayindex) $2 = patch params (defaults to -p1)
 # It will verify the existence of the patch file passed to it and
@@ -148,7 +148,7 @@ patch()
     if [ ! -z ${patch[$pnum]} ]; then # They didn't give us an empty string
 	if [ "${patch[$pnum]:0:1}" != "/" ]; then # We have a relative pathname
 	    # expand to absolute
-	    patch[$pnum]=$srcdir/${patch[$pnum]}
+	    patch[$pnum]=$patchdir/${patch[$pnum]}
 	fi # We are now sure that $patch[$pnum] contains file with absolute path
 	echo "Processing patch[$pnum] - ${patch[$pnum]}"
 	if [ -r ${patch[$pnum]} ]; then # file is readable
@@ -206,20 +206,25 @@ clean()
 {
     case $1 in
 	'source')   if [ -d "$srcdir/$topsrcdir" ]; then
+			echo "Removing $srcdir/$topsrcdir"
 			$RM -rf $srcdir/$topsrcdir
 		    else
 			echo "No unpacked source to scrub"
 		    fi
 		    ;;
 	'stage')    if [ -d $stagedir -a "$stagedir" != "/"  ]; then
+			echo "Emptying $stagedir"
 			$RM -rf $stagedir # This is very dangerous!
 			$MKDIR $stagedir
 		    else
 			error $E_BAD_DIR clean
 		    fi
 		    ;;
-	'meta')	    $RM -f $metadir/prototype*
+	'meta')	    echo "Removing $metadir/prototype*"
+		    $RM -f $metadir/prototype*
+		    echo "Removing $metadir/pkginfo"
 		    $RM -f $metadir/pkginfo
+		    echo "Removing $buildpkgbase/$topdir/$pkgname"
 		    $RM -rf $buildpkgbase/$topdir/$pkgname
 		    ;;
 
