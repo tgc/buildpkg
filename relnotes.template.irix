@@ -1,31 +1,22 @@
-PACKAGE NAME
-------------
+PACKAGE DETAILS
+---------------
+Name:	    %%PKGNAME%%
+Version:    %%SOURCE_AND_VER%%
+Vendor:	    %%VENDOR%%
+Packager:   %%PKGEDBY%%
 
-%%PKGNAME%%
-
-SOURCE/VERSION
---------------
-
-%%SOURCE_AND_VER%%
-
-BUILD ENVIRONMENT
------------------
-No special build variables where set
-
-compiler and version:
+BUILD DETAILS
+-------------
+Compiler:
 %%COMPILER%%
 
-CONFIGURE/MAKE FLAGS/TARGETS
-----------------------------
+Environment:
 
+Configure:
 %%CONFIGURE%%
-<if you've overridden configure_args then you need to update this manually>
 
-KNOWN DEPENDANCIES
+KNOWN DEPENDENCIES
 ------------------
-none
 
 ERRORS/MISCELLANEOUS
 --------------------
-none
-<Comments and instructions can be put here>
