@@ -1,0 +1,290 @@
+#
+# Function library for buildpkg framework
+# It adds support for creating Irix packages in 'inst' format
+#
+# Define tool programs
+# *only* platform specific packaging tools should be listed here
+# generic tools go in buildpkg.functions
+GENDIST=/usr/sbin/gendist
+
+# Configuration vars
+imageconf=$buildpkgbase/scripts/image.conf
+subsysconf=$buildpkgbase/scripts/subsys.conf
+idbfile=$metadir/$topdir.idb
+specfile=$metadir/$topdir.spec
+
+# Other
+# Comment these 4 declarations to get it to run with ksh
+declare -a pc # Array of product categories (image.subsys)
+declare -a pd # Array of matching descriptions
+declare -a pctop # Array of toplevel product categories (image)
+declare -a pdtop # Array of matching descriptions
+
+#override defaults
+pkgprefix=sb_
+pkgname=$pkgprefix$topdir
+
+os=irix`$UNAME -r`
+cpu=mips3
+distfile=$topdir-$version-$pkgver.tgc-$os-$cpu-$pkgdirdesig.tardist
+
+META_CLEAN="$topdir.spec $topdir.idb"
+
+##################################################### 
+# Internal helper functions
+#####################################################
+indent4="   "
+indent8="       "
+indent12="           "
+# fix_ver(): "normalize" a version-pkgver pair
+# params: $1=version
+# Removes any '.' and '-' characters from a version string
+fix_ver()
+{
+    local ver=`echo $1 | $SED -e 's/\.//g' -e 's/-//g'`
+    echo $ver
+}
+# spec_header()
+# param: $1=product name $2=description
+spec_header()
+{
+	echo "product $1"
+	echo "$indent4 id \"$2\""
+}
+spec_footer()
+{
+	echo "endproduct"
+}
+# spec_img_header()
+# param: $1=image name $2=image description $3=version
+spec_img_header()
+{
+	local nver=$(fix_ver $3)
+	echo "$indent4 image $1"
+	echo "$indent8 id \"$2\""
+	echo "$indent8 version $nver"
+	echo "$indent8 order 9999"
+}
+# spec_img_footer()
+spec_img_footer()
+{
+	echo "$indent4 endimage"
+}
+# spec_subsys()
+# param: $1=image $2=subsys $3=description
+spec_subsys()
+{
+	echo "$indent8 subsys $2 default"
+	echo "$indent12 id \"$3\""
+	echo "$indent12 replaces self"
+	echo "$indent12 exp $pkgname.$1.$2"
+	echo "$indent8 endsubsys"
+}
+
+# compute_octal()
+# Description: Computes the octal value from a permission list (_rwxrwxrwx)
+# param: $1=permission list
+# Caveats: It won't pickup sticky bit and mandatory locking bit
+compute_octal()
+{
+	perm=$1
+	v=0; d1=0; d2=0; d3=0; d4=0
+	# User part
+	if [ "${perm:1:1}" == "r" ]; then
+		let "v = v + 4" # set read bit
+	fi
+	if [ "${perm:2:1}" == "w" ]; then
+		let "v = v + 2" # set write bit
+	fi
+	if [ "${perm:3:1}" == "x" ]; then
+		let "v = v + 1" # set executable bit
+	elif [ "${perm:3:1}" == "s" ]; then
+		let "v = v + 1" # set executable bit
+		let "d1 = d1 + 4" # Set setuid bit
+	fi
+	d2=$v; v=0
+	# Group part
+	if [ "${perm:4:1}" == "r" ]; then
+		let "v = v + 4" # set read bit
+	fi
+	if [ "${perm:5:1}" == "w" ]; then
+		let "v = v + 2" # set write bit
+	fi
+	if [ "${perm:6:1}" == "x" ]; then
+		let "v = v + 1" # set executable bit
+	elif [ "${perm:6:1}" == "s" ]; then
+		let "v = v + 1" # set executable bit
+		let "d1 = d1 + 2" # Set setgid bit
+	fi
+	d3=$v; v=0;
+	# Other part
+	if [ "${perm:7:1}" == "r" ]; then
+		let "v = v + 4" # set read bit
+	fi
+	if [ "${perm:8:1}" == "w" ]; then
+		let "v = v + 2" # set write bit
+	fi
+	if [ "${perm:9:1}" == "x" ]; then
+		let "v = v + 1" # set executable bit
+	fi
+	d4=$v; v=0
+	echo $d1$d2$d3$d4
+}
+
+# add_files()
+# Create IDB entries for all files in a specfic product category
+# Takes the following parameters
+# $1 = dirname to descend into
+# $2 = product_category to assign files
+# $3 = permissions to set on the files we find
+# $4 = user
+# $5 = group
+add_files()
+{
+	local perm=$3
+	local FILES=`$FIND $1/* -type f -print`
+	for i in $FILES
+	do
+		if [ "$3" == "keep" ]; then
+			permlist=`$LS -l $i | $CUT -d " " -f 1`
+			perm=$(compute_octal $permlist)	
+		fi
+		echo "f $perm $4 $5 ${topinstalldir:1}/$i $i $pkgname.$2" >>$idbfile
+	done
+	FILES=`$FIND $1/* -type l -print`
+	for i in $FILES
+	do
+		if [ "$3" == "keep" ]; then
+			permlist=`$LS -l $i | $CUT -d " " -f 1`
+			perm=`compute_octal $permlist`	
+		fi
+		local temp=`$LS -l $i|$CUT -d '>' -f 2`
+		local symval=${temp# }
+		echo "l $perm $4 $5 $i $i $pkgname.$2 symval($symval)" >>$idbfile
+	done
+}
+
+# fetch_imageconf(): Fetch a list of toplevel image entries with descriptions
+# params: none
+# Discard the ones that we don't have any subsystems for FIXME!
+fetch_imageconf()
+{
+    pctopidx=0
+    while read image desc
+    do
+	pctop[$pctopidx]=$image
+	pdtop[$pctopidx]=$desc
+	let "pctopidx = $pctopidx + 1"
+    done < $imageconf
+}
+
+##################################
+# "external" functions
+##################################
+# create_idb(): Create the .idb file
+# params: none
+# Read each line in the subsys config file
+# and check if we have a $dir in our staging area
+create_idb()
+{
+    local index=0
+    local found=0
+    while read dir pdcat perm user group desc
+    do
+	found=0
+	if [ -d $dir ]; then # This exists
+	    add_files $dir $pdcat $perm $user $group
+	    for i in ${pc[@]} # If $pdcat is already there then don't add it again
+	    do
+		if [ "$i" = "$pdcat" ]; then
+		    found=1
+		    break 	# It's already there so skip out
+		fi
+	    done
+	    if [ $found -eq 0 ]; then
+		pc[$index]=$pdcat
+		pd[$index]=$desc
+		let "index = $index + 1"
+	    fi
+	fi
+    done < $subsysconf	
+    $SORT +4u -6 < $idbfile > $metadir/idbtemp
+    mv $metadir/idbtemp $metadir/$idbfile
+    $RM -f $metadir/idbtemp
+}
+
+# create_spec(): Create the .spec file.
+# params: none
+# Uses pkgname & pkgdesc variables
+# Iterate through pctop and for each iteration find
+# all entries in pc belonging to that image
+#
+create_spec()
+{
+    fetch_imageconf
+    spec_header $pkgname "$name $version-$pkgver" > $specfile
+    pcsize=${#pc[@]}
+    for i in ${pctop[@]}
+    do
+	pcidx=0
+	spec_img_header $i "${pdtop[$pcidx]}" $version-$pkgver >> $specfile
+	while [ "$pcidx" -lt "$pcsize" ]
+	do
+	    rv=`$EXPR match "${pc[$pcidx]}" ''$i''`
+	    if [ ! "$rv" -eq 0 ]; then # We got a hit!
+		spec_subsys $i `echo ${pc[$pcidx]}|$CUT -d . -f 2` "${pd[$pcidx]}" >> $specfile
+	    fi
+	    let "pcidx = $pcidx + 1"
+	done
+	spec_img_footer >> $specfile
+    done
+    spec_footer >> $specfile
+}
+
+# make_dist(): Create inst image
+# params: $1=[shortroot]
+# Run gendist to create the instimage
+make_dist()
+{
+    local arg1=${1-'x'}
+    if [ "$arg1" == "shortroot" ]; then
+	sbase=$stagedir
+    else
+	sbase=$stagedir/$topinstalldir
+    fi
+    local disttmp=/tmp/disttmp$$
+    $MKDIR $disttmp
+
+    $GENDIST -rbase $topinstalldir -sbase $sbase -idb $idbfile -spec $specfile -dist $disttmp
+    setdir $disttmp
+    $VTAR -cf $distdir/$distfile $pkgname*
+
+    setdir stage
+    $RM -rf $disttmp
+}
+
+# generic_pack(): Build package using files from 'install' stage
+# params: $1 - indicating whether or not the root is complete as described below
+# We expect generic_install to have made $stagedir the "root" dir
+# in that all paths below will be complete (ie. /usr/local/bin and not
+# just bin) *unless* $1=shortroot.
+generic_pack()
+{   
+    clean meta
+
+    setdir stage
+    create_idb
+    create_spec
+    
+    # Verify if $1 is defined
+    local arg1=${1-'x'}
+    case $arg1 in 
+	'x')		make_dist # arg1 was undefined
+			;;
+	'shortroot')	make_dist shortroot
+			;;
+	'*')		error $E_BAD_ARGS generic_pack
+			;;
+    esac
+}
+

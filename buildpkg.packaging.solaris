@@ -1,0 +1,167 @@
+#
+# Function library for buildpkg framework
+# It adds support for creating Solaris packages in 'sysv' format
+#
+# Define tool programs
+# *only* platform specific tools should be listed here
+# generic tools go in buildpkg.functions
+PKGMK=/usr/bin/pkgmk
+PKGTRANS=/usr/bin/pkgtrans
+PKGPROTO=/usr/bin/pkgproto
+
+# Override generic location
+STRIP=/usr/ccs/bin/strip
+
+META_CLEAN="prototype prototype.in pkginfo"
+
+# Define defaults
+# pkginfo information.
+# The following 3 vars will be used when constructing the pkginfo file
+# Override as necessary.
+pkgcat="application"	# A reasonable default
+pkgvendor="http://change/me/please"
+pkgdesc="mumble mubmle... hmm someone forgot to fill this out!"
+
+cpu=sparcv9
+os=sol`$UNAME -r`
+
+# Distfiles should be named like this
+# <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
+# ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
+distfile=$topdir-$version-$pkgver.sb-$os-$cpu-$pkgdirdesig
+
+##################################################### 
+# "external" functions
+#####################################################
+
+# make_pkg(): Create the final package
+# params: none
+#
+make_pkg()
+{
+    echo "Creating package and transferring it to datastream format"
+    $PKGMK -r `pwd` -d $buildpkgbase/$topdir -o -f $metadir/prototype
+    $PKGTRANS -o -s $buildpkgbase/$topdir $distdir/$distfile $pkgname
+    echo "Done. Package was created as $distfile"
+}
+
+# pack_info(): Create the pkginfo file
+# params: none
+# Will create the pkginfo file with pkginfo.in as a template
+# Both the template and the result will be in $metadir
+# Substitutions will be done on pkgname,version,pkgver,name & topinstalldir
+# they will be replaced with the value of their variable counterparts
+pack_info()
+{
+    $SED -e "s#%%pkgname%%#$pkgname#g" \
+	-e "s#%%version%%#$version#g" \
+	-e "s#%%pkgcat%%#$pkgcat#g" \
+	-e "s#%%pkgvendor%%#$pkgvendor#g" \
+	-e "s#%%pkgver%%#$pkgver#g" \
+	-e "s#%%name%%#$name#g" \
+	-e "s#%%topinstalldir%%#$topinstalldir#g" \
+	-e "s#%%pkgdesc%%#$pkgdesc#g" \
+	$metadir/pkginfo.in > $metadir/pkginfo
+}
+
+# prototype(): Create a prototype file for pkgmk
+# params: $1 = owner $2 = group $3 = [script|noscript]
+# $1 &  $2 will list the owner and group that is to be applied to all files
+# pkginfo and depend (if it exists) will automatically be added to prototype file
+# $3 will define whether or not to automatically include any post/pre scripts found
+# in $topdir/meta. Pr. default postinstall,preinstall,postremove,preremove are the filenames
+# it will look for.
+# $3 can be omitted and in that case prototype will behave as if $3=noscript
+prototype()
+{
+    local owner=$1
+    local group=$2
+
+    $FIND . -print|$PKGPROTO > $metadir/prototype.in
+    $CAT $metadir/prototype.in | $AWK -v owner="$owner" -v group="$group" \
+	'{ $5=owner; $6=group; print; }' > $metadir/prototype
+
+    add_meta_file pkginfo "$metadir/pkginfo"
+
+    # If a dependency file is available then use it
+    [ -r $metadir/depend ] && add_meta_file depend "$metadir/depend"
+
+    case $3 in
+	'script')   [ -r $metadir/preinstall ] && add_meta_file preinstall "$metadir/preinstall"
+		    [ -r $metadir/postinstall ] && add_meta_file postinstall "$metadir/postinstall"
+		    [ -r $metadir/preremove ] && add_meta_file preremove "$metadir/preremove"
+		    [ -r $metadir/postremove ] && add_meta_file postremove "$metadir/postremove"
+		    ;;
+	'noscript') ;;
+    esac
+}
+
+# add_meta_file(): add a metafile entry to the prototype file
+# params: $1 = keyword $2 = filename
+# Additions will be done to the file $metadir/prototype
+add_meta_file()
+{
+    local arg1=${1-'x'}
+    if [ "$arg1" == "x" ]; then
+	error $E_MISSING_ARGS add_meta_file
+    fi
+    local arg2=${2-'x'}
+    if [ "$arg2" == "x" ]; then
+	error $E_MISSING_ARGS add_meta_file
+    fi
+    if [ -r "$arg2" ]; then
+	echo "i $arg1=$arg2" >> $metadir/prototype
+    else
+	error $E_BAD_FILE add_meta_file
+    fi
+}
+# add_file(): add a file entry to the prototype file
+# params: $1 = owner $2 = group $3 = permissions $4 = filename
+# Additions will be done to the file $metadir/prototype
+# $4 must be relative to $stagedir$prefix (or just $stagedir if using shortroot)
+# We will not check for the existence of $4
+add_file()
+{
+    local arg1=${1-'x'}
+    if [ "$arg1" == "x" ]; then
+	error $E_MISSING_ARGS add_meta
+    fi
+    local arg2=${2-'x'}
+    if [ "$arg2" == "x" ]; then
+	error $E_MISSING_ARGS add_meta
+    fi
+    local arg3=${3-'x'}
+    if [ "$arg2" == "x" ]; then
+	error $E_MISSING_ARGS add_meta
+    fi
+    if [ -r "$arg4" ]; then
+	echo "f none $arg4 $3 $1 $2" >> $metadir/prototype
+    else
+	error $E_BAD_FILE add_meta_file
+    fi
+}
+
+#####################################################
+# Define generic functions for different build stages
+#####################################################
+# generic_pack(): Build package using files from 'install' stage
+# params: $1 - indicating whether or not the root is complete as described below
+# We expect generic_install to have made $stagedir the "root" dir
+# in that all paths below will be complete (ie. /usr/local/bin and not
+# just bin) *unless* $1=shortroot.
+generic_pack()
+{
+    clean meta
+    # Verify if $1 is defined
+    local arg1=${1-'x'}
+    case $arg1 in
+	'x') setdir "$stagedir$prefix" # arg1 was undefined
+	    ;;
+	'shortroot') setdir "$stagedir"
+		    ;;
+	'*') error $E_BAD_ARGS generic_pack
+    esac
+    pack_info
+    prototype root bin script
+    make_pkg
+}
