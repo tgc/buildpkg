@@ -160,7 +160,7 @@ add_files()
 		fi
 		local temp=`$LS -l $i|$CUT -d '>' -f 2`
 		local symval=${temp# }
-		echo "l $perm $4 $5 $i $i $pkgname.$2 symval($symval)" >>$idbfile
+		echo "l $perm $4 $5 ${topinstalldir:1}/$i $i $pkgname.$2 symval($symval)" >>$idbfile
 	done
 }
 
@@ -209,7 +209,7 @@ create_idb()
 	fi
     done < $subsysconf	
     $SORT +4u -6 < $idbfile > $metadir/idbtemp
-    mv $metadir/idbtemp $metadir/$idbfile
+    mv $metadir/idbtemp $idbfile
     $RM -f $metadir/idbtemp
 }
 
@@ -261,6 +261,7 @@ make_dist()
 
     setdir stage
     $RM -rf $disttmp
+    echo "Done. Package was created as $distfile"
 }
 
 # generic_pack(): Build package using files from 'install' stage
