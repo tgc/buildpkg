@@ -23,23 +23,25 @@
 #		patches must be in uncompressed format
 
 # Define tool programs
-PKGMK=/usr/bin/pkgmk
-PKGTRANS=/usr/bin/pkgtrans
-PKGPROTO=/usr/bin/pkgproto
-STRIP=/usr/ccs/bin/strip
+STRIP=/usr/bin/strip
 UNAME=/usr/bin/uname
 TAR=/usr/local/bin/tar # GNU tar please!
+VTAR=/usr/bin/tar # vendor supplied tar
 BZIP2=/usr/bin/bzip2
 GZIP=/usr/bin/gzip
 PATCH=/usr/local/bin/patch # GNU patch 2.5 or better please!
 RM=/usr/bin/rm
 MKDIR=/usr/bin/mkdir
 MAKE_PROG=/usr/local/bin/make # GNU make please!
-FIND=/usr/bin/find # Solaris find - GNU find will require changes to the script
+FIND=/usr/bin/find # vendor supplied find, GNU find will require changes to the script
 XARGS=/usr/bin/xargs
 CAT=/usr/bin/cat
-AWK=/usr/bin/nawk # This must be nawk or GNU awk - /usr/bin/awk will *not* work
+AWK=/usr/bin/nawk # This must be nawk or GNU awk - plain /usr/bin/awk will *not* work
 SED=/usr/bin/sed
+SORT=/usr/bin/sort
+CUT=/usr/bin/cut
+LS=/usr/bin/ls
+EXPR=/usr/bin/expr
 
 # Define defaults
 buildpkgbase=${HOME}/buildpkg
@@ -55,23 +57,21 @@ srcfiles=$buildpkgbase/srcfiles
 topinstalldir=/usr/local
 prefix=$topinstalldir
 
-# pkginfo information.
-# The following 5 vars will be used when constructing the pkginfo file
+# pkg information.
+# The following 3 vars can be used when constructing pkg metadata
 # Override as necessary.
-pkgname=SB$topdir # overriding this will be common
+pkgprefix=SB
+pkgname=$pkgprefix$topdir # overriding this will be common
 name=$topdir # as will this ditto
-pkgcat="application"	# A reasonable default
-pkgvendor="http://change/me/please"
-pkgdesc="mumble mubmle... hmm someone forgot to fill this out!"
 
-cpu=sparcv9
-os=sol`$UNAME -r`
 pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
 
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
 # ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
-distfile=$topdir-$version-$pkgver.sb-$os-$cpu-$pkgdirdesig
+#distfile=$topdir-$version-$pkgver.sb-$os-$cpu-$pkgdirdesig
+# You must override the distfile var in the pr. packaging
+# system function library
 
 # Define error codes and texts
 E_MISSING_STAGEDIR=30
@@ -220,12 +220,13 @@ clean()
 			error $E_BAD_DIR clean
 		    fi
 		    ;;
-	'meta')	    echo "Removing $metadir/prototype*"
-		    $RM -f $metadir/prototype*
-		    echo "Removing $metadir/pkginfo"
-		    $RM -f $metadir/pkginfo
-		    echo "Removing $buildpkgbase/$topdir/$pkgname"
+	'meta')	    echo "Removing $buildpkgbase/$topdir/$pkgname"
 		    $RM -rf $buildpkgbase/$topdir/$pkgname
+		    for i in $META_CLEAN
+		    do
+			echo "Removing $metadir/$i"
+			$RM -f $metadir/$i
+		    done
 		    ;;
 
 	'distclean')	clean source
@@ -249,114 +250,6 @@ strip()
 #    if
 }
     
-
-# make_pkg(): Create the final package
-# params: none
-#
-make_pkg()
-{
-    echo "Creating package and transferring it to datastream format"
-    $PKGMK -r `pwd` -d $buildpkgbase/$topdir -o -f $metadir/prototype
-    $PKGTRANS -o -s $buildpkgbase/$topdir $distdir/$distfile $pkgname
-    echo "Done. Package was created as $distfile"
-}
-
-# pack_info(): Create the pkginfo file
-# params: none
-# Will create the pkginfo file with pkginfo.in as a template
-# Both the template and the result will be in $metadir
-# Substitutions will be done on pkgname,version,pkgver,name & topinstalldir
-# they will be replaced with the value of their variable counterparts
-pack_info()
-{
-    $SED -e "s#%%pkgname%%#$pkgname#g" \
-	-e "s#%%version%%#$version#g" \
-	-e "s#%%pkgcat%%#$pkgcat#g" \
-	-e "s#%%pkgvendor%%#$pkgvendor#g" \
-	-e "s#%%pkgver%%#$pkgver#g" \
-	-e "s#%%name%%#$name#g" \
-	-e "s#%%topinstalldir%%#$topinstalldir#g" \
-	-e "s#%%pkgdesc%%#$pkgdesc#g" \
-	$metadir/pkginfo.in > $metadir/pkginfo
-}
-
-# prototype(): Create a prototype file for pkgmk
-# params: $1 = owner $2 = group $3 = [script|noscript]
-# $1 &  $2 will list the owner and group that is to be applied to all files
-# pkginfo and depend (if it exists) will automatically be added to prototype file
-# $3 will define whether or not to automatically include any post/pre scripts found
-# in $topdir/meta. Pr. default postinstall,preinstall,postremove,preremove are the filenames
-# it will look for.
-# $3 can be omitted and in that case prototype will behave as if $3=noscript
-prototype()
-{
-    local owner=$1
-    local group=$2
-
-    $FIND . -print|$PKGPROTO > $metadir/prototype.in
-    $CAT $metadir/prototype.in | $AWK -v owner="$owner" -v group="$group" \
-	'{ $5=owner; $6=group; print; }' > $metadir/prototype
-
-    add_meta_file pkginfo "$metadir/pkginfo"
-
-    # If a dependency file is available then use it
-    [ -r $metadir/depend ] && add_meta_file depend "$metadir/depend"
-
-    case $3 in
-	'script')   [ -r $metadir/preinstall ] && add_meta_file preinstall "$metadir/preinstall"
-		    [ -r $metadir/postinstall ] && add_meta_file postinstall "$metadir/postinstall"
-		    [ -r $metadir/preremove ] && add_meta_file preremove "$metadir/preremove"
-		    [ -r $metadir/postremove ] && add_meta_file postremove "$metadir/postremove"
-		    ;;
-	'noscript') ;;
-    esac
-}
-
-# add_meta_file(): add a metafile entry to the prototype file
-# params: $1 = keyword $2 = filename
-# Additions will be done to the file $metadir/prototype
-add_meta_file()
-{
-    local arg1=${1-'x'}
-    if [ "$arg1" == "x" ]; then
-	error $E_MISSING_ARGS add_meta_file
-    fi
-    local arg2=${2-'x'}
-    if [ "$arg2" == "x" ]; then
-	error $E_MISSING_ARGS add_meta_file
-    fi
-    if [ -r "$arg2" ]; then
-	echo "i $arg1=$arg2" >> $metadir/prototype
-    else
-	error $E_BAD_FILE add_meta_file
-    fi
-}
-# add_file(): add a file entry to the prototype file
-# params: $1 = owner $2 = group $3 = permissions $4 = filename
-# Additions will be done to the file $metadir/prototype
-# $4 must be relative to $stagedir$prefix (or just $stagedir if using shortroot)
-# We will not check for the existence of $4
-add_file()
-{
-    local arg1=${1-'x'}
-    if [ "$arg1" == "x" ]; then
-	error $E_MISSING_ARGS add_metae
-    fi
-    local arg2=${2-'x'}
-    if [ "$arg2" == "x" ]; then
-	error $E_MISSING_ARGS add_meta
-    fi
-    local arg3=${3-'x'}
-    if [ "$arg2" == "x" ]; then
-	error $E_MISSING_ARGS add_meta
-    fi
-    if [ -r "$arg4" ]; then
-	echo "f none $arg4 $3 $1 $2" >> $metadir/prototype
-    else
-	error $E_BAD_FILE add_meta_file
-    fi
-}
-
 #####################################################
 # Define generic functions for different build stages
 #####################################################
@@ -430,19 +323,14 @@ generic_install()
 # We expect generic_install to have made $stagedir the "root" dir
 # in that all paths below will be complete (ie. /usr/local/bin and not
 # just bin) *unless* $1=shortroot.
-generic_pack()
-{
-    clean meta
-    # Verify if $1 is defined
-    local arg1=${1-'x'}
-    case $arg1 in
-	'x') setdir "$stagedir$prefix" # arg1 was undefined
-	    ;;
-	'shortroot') setdir "$stagedir"
-		    ;;
-	'*') error $E_BAD_ARGS generic_pack
-    esac
-    pack_info
-    prototype root bin script
-    make_pkg
-}
+#
+# This function should be implemented in the pr. packaging system
+# function library.
+case $OSTYPE in
+    solaris*)	. $buildpkgbase/scripts/buildpkg.packaging.solaris
+		;;
+    irix*)	. $buildpkgbase/scripts/buildpkg.packaging.irix
+		;;
+    *)		echo "No packaging system function library available for this OS"
+		;;
+esac
