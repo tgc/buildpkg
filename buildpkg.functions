@@ -115,6 +115,7 @@ pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
 
 # Functionality controls
 catman=0   # Don't fix manpages pr. default
+gzman=0	    # Don't compress man pages pr. default
 dostrip=1
 dostrip_elf=1   # default to stripping binaries during the install stage
 dostrip_shared=1 # default to stripping shared objects during the install stage
@@ -369,17 +370,44 @@ fix_man()
 	    do
 		if [ -L "$manpage" ]; then
 		    TARGET=$($LS -l "$manpage" | $AWK '{ print $NF }')
-		    $LN -sf "$TARGET".gz "$manpage".gz
-		    $MV "$manpage".gz "../$catdir"
+		    $LN -sf "$TARGET" "$manpage"
+		    $MV "$manpage" "../$catdir"
 		    $RM -f "$manpage"
 		else
 		    $NEQN $NEQNOPTS "$manpage" | $TBL | $NROFF $NROFFOPTS > "../$catdir/$manpage"
-		    $GZIP "../$catdir/$manpage"
 		    $RM -f $manpage
 		fi
 	    done
 	    cd ..
 	    rmdir $i
+	fi
+    done
+}
+
+# compress_man(): Compress raw manpages
+# params: none
+# Run from 'cwd' where 'cwd' contains manX subdirs
+compress_man()
+{
+    echo "Compressing manpages"
+    for i in [cm]a[nt]?
+    do
+	if [ -d $i ]; then
+	    cd $i
+	    for manpage in *
+	    do
+		suffix="${manpage##*.}"
+		if [ "$suffix" != "gz" -a "$suffix" != "Z" ]; then #probably uncompressed...
+		    if [ -L "$manpage" ]; then
+			TARGET=$($LS -l "$manpage" | $AWK '{ print $NF }')
+			$LN -sf "$TARGET".gz "$manpage".gz
+			$RM -f "$manpage"
+		    else
+			$GZIP "$manpage"
+		    fi
+		fi
+	    done
+	    cd ..
 	fi
     done
 }

@@ -41,6 +41,9 @@ usedepend=1 # default to looking for a depend file in $metadir
 usescripts=1 # default to add pre/post scripts if available
 ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area 
 
+# Compress raw manpages...
+gzman=1
+
 # Host specific configuration
 [ -r $buildpkgbase/scripts/config.`hostname`.solaris ] && . $buildpkgbase/scripts/config.`hostname`.solaris
 
@@ -399,20 +402,20 @@ get_pkgname()
     echo $pname
 }
 
-# get_pkgrev(): Extract pkgrev (PSTAMP) from pkginfo file
+# get_pkgrev(): Extract pkgrev (REV part of VERSION field) from pkginfo file
 # params: $1 = metafile suffix
 get_pkgrev()
 {
     local secname=$1
 
-    local pstamp=$($GREP PSTAMP $metadir/pkginfo.$secname)
-    local secver=$(_upls ${pstamp##PSTAMP=})
+    local verfield="$($GREP VERSION $metadir/pkginfo.$secname|$SED -e 's/"//g')"
+    local secver=$(_upls ${verfield#*REV=})
     echo $secver
 }
 
 # do_strip_bin(): Strip binaries
 # params: none
-do_strip_binaries()
+do_strip_bin()
 {
     echo "Stripping ELF binaries..."
     for f in `$FIND . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec $FILE {} \; | \
@@ -465,9 +468,19 @@ generic_pack()
     fi
     clean meta
     if [ "$shortroot" -eq 1 ]; then
+	if [ -d "${stagedir}/${_mandir}" ]; then
+	    setdir ${stagedir}/${_mandir}
+	    [ "$catman" -eq 1 ] && fix_man
+	    [ "$gzman" -eq 1 ] && compress_man
+	fi
 	setdir "$stagedir"
     else
-	setdir "$stagedir$prefix"
+	if [ -d "${stagedir}${topinstalldir}${dir_prefix}/${_mandir}" ]; then
+	    setdir ${stagedir}${topinstalldir}${dir_prefix}/${_mandir}
+	    [ "$catman" -eq 1 ] && fix_man
+	    [ "$gzman" -eq 1 ] && compress_man
+	fi
+	setdir "${stagedir}${prefix}"
     fi
     parse_def
     check_unpackaged
