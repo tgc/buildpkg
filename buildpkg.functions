@@ -51,6 +51,8 @@ CUT=/usr/bin/cut
 LS=/usr/bin/ls
 EXPR=/usr/bin/expr
 MV=/usr/bin/mv
+MKDIR=/usr/bin/mkdir
+CP=/usr/bin/cp
 
 # Groff stuff for manpages
 NEQN=/usr/local/bin/neqn
