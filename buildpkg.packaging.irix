@@ -455,8 +455,8 @@ create_idb()
 #	add_files "dist" opt.dist - root sys ""
 	pc[$pcpos]="opt.dist"
 	# Add entries for the spec & idb files (opt.dist), they will be installed later, after they've actually been created
-	echo "f 644 root sys ${metainstalldir}/dist/$topdir-$version-$pkgver/$topdir.idb ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb ${pkgname}.opt.dist" >>$idbfile
-	echo "f 644 root sys ${metainstalldir}/dist/$topdir-$version-$pkgver/$topdir.spec ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec ${pkgname}.opt.dist" >>$idbfile
+	echo "f 644 root sys ${metainstalldir:1}/dist/$topdir-$version-$pkgver/$topdir.idb ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb ${pkgname}.opt.dist" >>$idbfile
+	echo "f 644 root sys ${metainstalldir:1}/dist/$topdir-$version-$pkgver/$topdir.spec ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec ${pkgname}.opt.dist" >>$idbfile
 	echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb" >> $metadir/files.tmp
 	echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec" >> $metadir/files.tmp
 #    fi
