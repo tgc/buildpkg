@@ -404,9 +404,11 @@ get_pkgname()
 {
     local secname=$1
 
-    local pn=$($GREP PKG $metadir/pkginfo.$secname)
-    local pname=$(_upls ${pn##PKG=})
-    echo $pname
+    if [ -r $metadir/pkginfo.$secname ]; then
+	local pn=$($GREP PKG $metadir/pkginfo.$secname)
+	local pname=$(_upls ${pn##PKG=})
+	echo $pname
+    fi
 }
 
 # get_pkgrev(): Extract pkgrev (REV part of VERSION field) from pkginfo file

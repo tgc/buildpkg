@@ -310,7 +310,7 @@ clean()
 			    META_CLEAN="$META_CLEAN prototype.$secname pkginfo.$secname"
 			    pkgname=$(get_pkgname $secname)
 			    echo "Removing $buildpkgbase/$pkgdir/$pkgname"
-			    $RM -rf $buildpkgbase/$pkgdir/$pkgname
+			    [ ! -z "$pkgname" ] && $RM -rf $buildpkgbase/$pkgdir/$pkgname
 			done
 		    fi
 
