@@ -9,7 +9,7 @@
 # must have sane values
 # topdir= The toplevel dir name under $buildpkgbase
 #	 It is also used pr. default in the pkgname
-#	  and it is also used pr. default as the toplevel name inside the sourcetar ($tarname)
+#	  and it is also used pr. default as the toplevel name inside the sourcetar ($topsrcdir)
 # version= source version ie. 0.14.2b
 # pkgver= the package revision, an increasing number is recommended but a date could be used instead
 # source[0..x] = source filenames - source[0] *must* be defined and contain a legal filename
@@ -19,7 +19,7 @@
 # patch[0..x] = patch filenames - patch[0] must be defined but *can* be empty
 #		pr. default we expect these to be listed relative to $srcdir
 #		filenames that begin with / will be treated as absolute paths
-#		All patching will be done from *within* $srcdir/$tarname directory with patch -p1
+#		All patching will be done from *within* $srcdir/$topsrcdir directory with patch -p1
 #		patches must be in uncompressed format
 
 # Define tool programs
@@ -31,13 +31,18 @@ TAR=/usr/local/bin/tar # GNU tar please!
 BZIP2=/usr/bin/bzip2
 GZIP=/usr/bin/gzip
 PATCH=/usr/local/bin/patch # GNU patch 2.5 or better please!
+RM=/usr/bin/rm
+MKDIR=/usr/bin/mkdir
+MAKE_PROG=/usr/local/bin/make # GNU make please!
+FIND=/usr/bin/find
+XARGS=/usr/bin/xargs
 
 # Define defaults
 buildpkgbase=${HOME}/buildpkg
 stagedir=$buildpkgbase/$topdir/build
 srcdir=$buildpkgbase/$topdir/src
 metadir=$buildpkgbase/$topdir/meta
-tarname=$topdir-$version
+topsrcdir=$topdir-$version # it may be necessary to override this
 
 srcfiles=$buildpkgbase/srcfiles
 
@@ -62,47 +67,65 @@ E_PATCH_FAILED=33
 E_BAD_DIR=34
 E_BAD_UNPACK=35
 E_BAD_COMPRESS=36
+E_BAD_CONFIG=37
+E_BAD_MAKE=38
+E_BAD_CLEANOPTIONS=39
+E_BAD_STRIP=40
 
 error_txt[$E_BAD_FILE]="File not found"
 error_txt[$E_PATCH_FAILED]="Patch failed"
 error_txt[$E_BAD_DIR]="Directory not found"
 error_txt[$E_BAD_UNPACK]="Unable to decompress sourcearchive"
 error_txt[$E_BAD_COMPRESS]="Unknown compression method"
+#error_txt[$E_BAD_CONFIG]="configure failed"
+#error_txt[$E_BAD_MAKE]="make failed"
 
 # 
 # Helper functions
 #
 #
 # error(): exit with errorcode and possibly a message
-# params: $1 = errorcode
+# params: $1 = errorcode $2 = name of caller
 error()
 {
-    if [ ! -z "${error_txt[$1]}" ]; then
-	echo "$1: ${error_txt[$1]}"
+    if [ -n "${error_txt[$1]}" ]; then
+	echo "$2: ${error_txt[$1]}"
     fi
     exit $1
 }
+
+# setdir(): switch tsetdir "$srcdir"o a directory, but check destination first
+# params: $1=dir to cd to
+# Switches to the directory in $1 but first checks if the destination exists
+setdir()
+{
+    echo "Switching to $1"
+    if [ -z "$1" ]; then
+	error $E_BAD_DIR setdir
+    fi
+    if [ -d "$1" ]; then
+	cd "$1"
+    else
+	error $E_BAD_DIR setdir
+    fi
+}
+
 #
 # patch(): patch unpacked source
 # params: $1 = patch number (arrayindex) $2 = patch params (defaults to -p1)
 # It will verify the existence of the patch file passed to it and
 # exit gracefully if it cannot be found.
-# An empty $2 argument will be treated as undefined
+# An empty $2 argument will be treated as undefined and mapped to -p1
 patch()
 {
     local pnum=$1
     local p2=$2
     local pparam=${p2:-"-p1"}
     
-    echo "Switching to $srcdir/$tarname"
-    if [ -d "$srcdir/$tarname" ]; then
-	cd $srcdir/$tarname
-    else
-	error $E_BAD_DIR
-    fi
+    setdir $srcdir/$topsrcdir
 
     if [ ! -z ${patch[$pnum]} ]; then # They didn't give us an empty string
-	if [ ! "${patch[$pnum]:0:1}" == "/" ]; then # We have a relative pathname
+	if [ "${patch[$pnum]:0:1}" != "/" ]; then # We have a relative pathname
 	    # expand to absolute
 	    patch[$pnum]=$srcdir/${patch[$pnum]}
 	fi # We are now sure that $patch[$pnum] contains file with absolute path
@@ -110,13 +133,13 @@ patch()
 	if [ -r ${patch[$pnum]} ]; then # file is readable
 	    $PATCH -Es $2 < ${patch[$pnum]}
 	    if [ $? -ne 0 ]; then
-		error $E_PATCH_FAILED
+		error $E_PATCH_FAILED patch
 	    fi
 	else
-	    error $E_BAD_FILE
+	    error $E_BAD_FILE patch
 	fi
     else
-	echo "No such patchnumber defined - $1"
+	echo "Patch $pnum has empty filename"
     fi
 }
 
@@ -127,13 +150,9 @@ patch()
 unpack()
 {
     local snum=$1
-    echo "Switching to $srcdir"
-    if [ -d $srcdir ]; then
-	cd $srcdir
-    else
-	error $E_BAD_DIR
-    fi
-    if [ ! "${source[$snum]:0:1}" == "/" ]; then # We have a relative pathname
+
+    setdir $srcdir
+    if [ "${source[$snum]:0:1}" != "/" ]; then # We have a relative pathname
 	# expand to absolute
 	source[$snum]=$srcfiles/${source[$snum]}
     fi # We are now sure that ${source[$snum]} contains file with absolute path
@@ -150,16 +169,51 @@ unpack()
 	    'bz2') $BZIP2 -dc ${source[$snum]} | $TAR -xf -;;
 	    'Z') $GZIP -dc ${source[$snum]} | $TAR -xf -;;
 	    'tgz') $GZIP -dc ${source[$snum]} | $TAR -xf -;;
-	    *) error $E_BAD_COMPRESS
+	    *) error $E_BAD_COMPRESS unpack
 	esac
 	if [ $? -ne 0 ]; then
-	    error $E_BAD_UNPACK
+	    error $E_BAD_UNPACK unpack
 	fi
     else
-	error $E_BAD_FILE
+	error $E_BAD_FILE unpack
     fi
 }
 
+# clean(): Scrub build environment 
+# params: $1=stage|source
+clean()
+{
+    case $1 in
+	'source')   if [ -d "$srcdir/$topsrcdir" ]; then
+			$RM -rf $srcdir/$topsrcdir
+		    else
+			echo "No unpacked source to scrub"
+		    fi
+		    ;;
+	'stage')    if [ -d $stagedir -a "$stagedir" != "/"  ]; then
+			$RM -rf $stagedir # This is very dangerous!
+			$MKDIR $stagedir
+		    else
+			error $E_BAD_DIR clean
+		    fi
+		    ;;
+	*)  error $E_BAD_CLEANOPTION clean
+    esac
+}
+
+# strip(): strip binaries in stagedir
+# params: none
+# Automatically switches to $stagedir
+# On exit cwd is $stagedir
+strip()
+{
+    setdir "$stagedir"
+    $FIND . -type f -perm -700 | $XARGS $STRIP
+    if [ $? -ne 0 ]; then
+	error $E_BAD_STRIP strip
+    fi
+}
+    
 #
 # Define generic functions for different build stages
 #
@@ -168,6 +222,7 @@ unpack()
 # params: none
 generic_prep()
 {
+    clean source
     unpack 0 
     # Patching
     local numpatch=${#patch[@]}
@@ -186,20 +241,31 @@ generic_prep()
 }
 
 # generic_build(): Take the necessary steps to build already prepared source
-# params: [$1 = topsrcdir] 
-# topsrcdir is the toplevel dir *inside* the sourcepackage
-# It may be necessary to set this if it differs from $topdir-$version
+# params: none
 generic_build()
 {
-echo
+    setdir "$srcdir/$topsrcdir"
+
+    ./configure --prefix=$prefix
+    if [ $? -ne 0 ]; then
+	error $E_BAD_CONFIG generic_build
+    fi
+    $MAKE_PROG
+    if [ $? -ne 0 ]; then
+	error $E_BAD_MAKE generic_build
+    fi
 }
 
 # generic_install(): Install already built source
 generic_install()
 {
-if [ -z "$stagedir" ]; then
-    exit $E_MISSING_STAGEDIR
-fi
+    clean stage
+    setdir "$srcdir/$topsrcdir"
+    $MAKE_PROG DESTDIR=$stagedir install
+    if [ $? -ne 0 ]; then
+	error $E_BAD_MAKE generic_install
+    fi
+    strip
 }
 
 # generic_pack(): Build package using files from 'install' stage
