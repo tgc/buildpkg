@@ -59,15 +59,13 @@ BASENAME=/bin/basename
 DIRNAME=/bin/dirname
 TR=/bin/tr
 FILE=/usr/bin/file # Used by do_strip()
-PRINTF="/usr/bin/printf"
+PRINTF=/usr/bin/printf
 LN=/usr/bin/ln
+GINSTALL=/usr/local/bin/install # BSD compatible install - usually GNU install
 
 # Groff stuff for manpages
-NEQN=/usr/local/bin/neqn
-NEQNOPTS="-Tlatin1"
-TBL=/usr/local/bin/tbl
 NROFF=/usr/local/bin/nroff
-NROFFOPTS="-c -man"
+NROFFOPTS="-c -mandoc -Tlatin1 -t"
 
 # Define defaults
 pkgdir=${PWD##*/} # topdir under $BUILDPKG_BASE
@@ -116,6 +114,7 @@ pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
 # Functionality controls
 catman=0   # Don't fix manpages pr. default
 gzman=0	    # Don't compress man pages pr. default
+gzinfo=1    # Compress infopages pr. default
 dostrip=1
 dostrip_elf=1   # default to stripping binaries during the install stage
 dostrip_shared=1 # default to stripping shared objects during the install stage
@@ -374,7 +373,7 @@ fix_man()
 		    $MV "$manpage" "../$catdir"
 		    $RM -f "$manpage"
 		else
-		    $NEQN $NEQNOPTS "$manpage" | $TBL | $NROFF $NROFFOPTS > "../$catdir/$manpage"
+		    $NROFF $NROFFOPTS "$manpage" > "../$catdir/$manpage"
 		    $RM -f $manpage
 		fi
 	    done
@@ -384,9 +383,9 @@ fix_man()
     done
 }
 
-# compress_man(): Compress raw manpages
+# compress_man(): Compress manpages
 # params: none
-# Run from 'cwd' where 'cwd' contains manX subdirs
+# Run from 'cwd' where 'cwd' contains catX/manX subdirs
 compress_man()
 {
     echo "Compressing manpages"
@@ -409,6 +408,18 @@ compress_man()
 	    done
 	    cd ..
 	fi
+    done
+}
+
+# compress_info(): Compress GNU info pages
+# params: none
+# Run from 'cwd' where 'cwd' is the dir contains uncompressed info pages
+compress_info()
+{
+    echo "Compressing info pages"
+    for i in *
+    do
+	${GZIP} $i
     done
 }
 
