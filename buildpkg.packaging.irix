@@ -43,6 +43,10 @@ usescripts=1 # Don't add ops even if they're available
 ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area
 include_source=0 # Include source[x] in the opt.src subsystem and not just patch[x]
 
+# vendor & contact information to be added in relnotes
+pkgedby="Tom G. Christensen"
+email="irixpkg@jupiterrise.com"
+
 # ver_width controls the width of the pkgversion numbers created
 # do *not* change this blindly
 ver_width=8
@@ -86,13 +90,21 @@ indent24="                       "
 # fix_ver(): "normalize" a version-pkgver pair
 # params: $1=version
 # Removes any '.' and '-' characters from a version string
-# It also extends the width to $ver_width by padding with zeroes on the
-# right side
+# It also extends the width to $ver_width by moving the package revision
+# to the far right and padding with zeroes inbetween.
 fix_ver()
 {
-    local ver=`echo $1 | $SED -e 's/\.//g' -e 's/-//g' -e 's/[a-zA-Z]//g'`
-    let "numpad = $ver_width - ${#ver}"
-    ver="$($PRINTF "%s%.0${numpad}u" $ver 0)"
+    local version=$1
+    local rev=${version##*-}
+    local ver=$(echo ${version%%-*} | $SED -e 's/\.//g' -e 's/-//g' -e 's/[a-zA-Z]//g')
+    let "numpad = $ver_width - ${#ver} - ${#rev}"
+    [ $numpad -lt 0 ] && error $E_BAD_VERSION fix_ver
+    while [ $numpad -gt 0 ]
+    do
+	ver="${ver}0"
+	let "numpad = $numpad - 1"
+    done
+    ver="${ver}${rev}"
     echo $ver
 }
 # spec_header()
@@ -754,6 +766,36 @@ auto_src()
     fi
 }
 
+# rel_conf_sub(): Put configure_args into the relnotes template
+# params: none
+# The set_configure_args command will call this function to 
+# substitute %%CONFIGURE%% in the relnotes template at the
+# time of expansion.
+rel_conf_sub()
+{
+    for i in relnotes relnotes.${_os}
+    do      
+	[ -r ${metadir}/${i} ] && rn=$i
+    done            
+    cf="$(_upls $configure_args)"
+    full_cf="./configure $cf"
+    if [ -r ${metadir}/${rn} ]; then
+	$SED -e "s;%%CONFIGURE%%;$full_cf;g" \
+	    ${metadir}/${rn} > ${metadir}/${rn}.txt
+    fi
+}
+
+# set_configure_args(): Stuff new arguments into configure_args
+# params: $1 = configure arguments
+# If you want non-default configure_args put into relnotes
+# automatically, then use this function to set them instead
+# of overriding the configure_args variable directly.
+set_configure_args()
+{
+    configure_args="$1"
+    rel_conf_sub
+}
+
 # auto_rel(): Fix up and add releasenotes to stagedir
 # params: none
 # This will make some substitutions on a release note template
@@ -763,7 +805,7 @@ auto_rel()
     local i
     local rn
 
-    for i in relnotes relnotes.${_os};
+    for i in relnotes relnotes.${_os} relnotes.txt relnotes.${_os}.txt;
     do
 	[ -r ${metadir}/${i} ] && rn=$i
     done
@@ -773,13 +815,18 @@ auto_rel()
 	local fullcf="./configure $cf"
 	local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
 	local compiler="gcc ${compiler_temp##* }"
-	local pkgnam_temp=$(grep 'pkgname=' $metadir/pkgdef)
+	local pkgnam_temp=$($GREP 'pkgname=' $metadir/pkgdef)
 	local pkgnam=$(_upls ${pkgnam_temp#pkgname=*})
+	local vendor_temp=$($GREP 'pkgvendor=' $metadir/pkgdef)
+	local vendor=$(_upls ${vendor_temp#pkgvendor=*})
+	local packager="${pkgedby} <${email}>"
 	$MKDIR -p $relmetadir
 	$SED -e "s;%%PKGNAME%%;${pkgnam};g" \
 	    -e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
 	    -e "s;%%CONFIGURE%%;${fullcf};g" \
 	    -e "s;%%COMPILER%%;${compiler};g" \
+	    -e "s;%%VENDOR%%;${vendor};g" \
+	    -e "s;%%PKGEDBY%%;${packager};g" \
 		${metadir}/${rn} > "$relmetadir/${topdir}.txt"
     else
 	echo "auto_rel: No release notes found!"
