@@ -395,7 +395,7 @@ generic_build()
 {
     setdir source
 
-    ./configure --prefix=$prefix
+    ./configure --prefix=$prefix --disable-nls
     if [ $? -ne 0 ]; then
 	error $E_BAD_CONFIG generic_build
     fi
