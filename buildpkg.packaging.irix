@@ -16,16 +16,24 @@ imageconf=$buildpkgbase/scripts/image.conf
 subsysconf=$buildpkgbase/scripts/subsys.conf
 idbfile=$metadir/$topdir.idb
 specfile=$metadir/$topdir.spec
+depends=$metadir/depends
+opsfile=$metadir/ops
+hidefile=$metadir/hide
 
 # Preformat manpages since Irix is not likely to have nroff available
 catman=1
 
 # Other
-# Comment these 4 declarations to get it to run with ksh
+# Comment these declarations to get it to run with ksh
 declare -a pc # Array of product categories (image.subsys)
 declare -a pd # Array of matching descriptions
 declare -a pctop # Array of toplevel product categories (image)
 declare -a pdtop # Array of matching descriptions
+declare -a reqs # Array of subsystems with prereqs
+declare -a reqp # Array of prereqs (should match up with reqs)
+declare -a hide # Files that should be "hidden" with nohist
+declare -a opfiles # Files that should have an ops associated
+declare -a opscript # Ops to associate with opfiles
 
 #override defaults
 pkgprefix=tgc_
@@ -43,6 +51,7 @@ META_CLEAN="$topdir.spec $topdir.idb"
 indent4="   "
 indent8="       "
 indent12="           "
+indent16="               "
 # fix_ver(): "normalize" a version-pkgver pair
 # params: $1=version
 # Removes any '.' and '-' characters from a version string
@@ -77,15 +86,26 @@ spec_img_footer()
 {
 	echo "$indent4 endimage"
 }
-# spec_subsys()
+# spec_subsys_header()
 # param: $1=image $2=subsys $3=description
-spec_subsys()
+spec_subsys_header()
 {
 	echo "$indent8 subsys $2 default"
 	echo "$indent12 id \"$3\""
 	echo "$indent12 replaces self"
 	echo "$indent12 exp $pkgname.$1.$2"
-	echo "$indent8 endsubsys"
+}
+# spec_subsys_req()
+# param: $1=prereq
+spec_subsys_req()
+{
+    echo "$indent16 prereq ( $1 )"
+}
+# spec_subsys_footer()
+# param: none
+spec_subsys_footer()
+{
+    echo "$indent8 endsubsys"
 }
 
 # compute_octal()
@@ -138,6 +158,34 @@ compute_octal()
 	echo $d1$d2$d3$d4
 }
 
+# check_hide(): Should the file be "hidden"
+# params: $1=file to check against $hide
+check_hide()
+{
+    local file=$1
+    for ((i=0; $i < ${#hide[@]}; i++))
+    do
+	if [ "${hide[$i]}" == "$file" ]; then
+	    echo 1
+	fi
+    done
+}
+# check_ops(): Is there an opscript associated with $1
+# param: $1=file to check
+check_ops()
+{
+    local file=$1
+    local return
+    echo "file is $file" >> /tmp/debug
+    for ((i=0; $i < ${#opfiles[@]}; i++))
+    do
+	echo "opfiles $i is ${opfiles[$i]}" >> /tmp/debug
+	if [ "${opfiles[$i]}" == "$file" ]; then
+	    return="${opscript[$i]}"
+	fi
+    done
+    echo $return
+}
 # add_files()
 # Create IDB entries for all files in a specfic product category
 # Takes the following parameters
@@ -149,16 +197,27 @@ compute_octal()
 add_files()
 {
 	local perm=$3
-	local FILES=`$FIND $1/* -type f -print`
+	local FILES=`$FIND $1 -type f -print`
 	for i in $FILES
 	do
 		if [ "$3" == "keep" ]; then
 			permlist=`$LS -l $i | $CUT -d " " -f 1`
 			perm=$(compute_octal $permlist)	
 		fi
-		echo "f $perm $4 $5 ${topinstalldir:1}/$i $i $pkgname.$2" >>$idbfile
+		nohist=$(check_hide $i)
+		doop=$(check_ops $i)
+		if [ ! -z "$nohist" ]; then
+		    echo "f $perm $4 $5 ${topinstalldir:1}/$i $i $pkgname.$2 nohist" >>$idbfile
+		else
+		    if [ ! -z "$doop" ]; then
+			echo "f $perm $4 $5 ${topinstalldir:1}/$i $i $pkgname.$2 $doop" >>$idbfile
+		    else
+			echo "f $perm $4 $5 ${topinstalldir:1}/$i $i $pkgname.$2" >>$idbfile
+		    fi
+		fi
+
 	done
-	FILES=`$FIND $1/* -type l -print`
+	local FILES=`$FIND $1 -type l -print`
 	for i in $FILES
 	do
 		if [ "$3" == "keep" ]; then
@@ -185,6 +244,59 @@ fetch_imageconf()
     done < $imageconf
 }
 
+# fetch_depends(): Fetch a list of subsystems and their prereqs
+# params: none
+#
+fetch_depends()
+{
+    reqidx=0
+    while read ss req
+    do
+	reqs[$reqidx]=$ss
+	if [ "$req" == "auto" ]; then # auto create depend on sw.base
+	    nver=$(fix_ver "$version-$pkgver")
+	    req="$pkgname $nver $nver"
+	fi
+	reqp[$reqidx]=$req
+	let "reqidx = $reqidx + 1"
+    done < $depends
+}
+
+# fetch_ops(): Fetch ops
+# params: none
+# Populates the firstop and lastop variables
+# and the opfiles and opscript arrays
+fetch_ops()
+{
+    opsidx=0
+    while read optype op
+    do
+	case $optype in
+	    'firstop')
+			firstop="$op"
+			;;
+	    'lastop')
+			lastop="$op"
+			;;
+	esac
+	opfiles[$opsidx]=$optype
+	opscript[$opsidx]=$op	
+	let "opsidx = $opsidx + 1"
+    done < $opsfile
+}
+
+#fetch_hide(): Fetch list of files to "hide"
+#params: none
+fetch_hide()
+{
+    hideidx=0
+    while read filen
+    do
+	hide[$hideidx]=$filen
+	let "hideidx = $hideidx + 1"
+    done < $hidefile
+}
+
 ##################################
 # "external" functions
 ##################################
@@ -194,13 +306,16 @@ fetch_imageconf()
 # and check if we have a $dir in our staging area
 create_idb()
 {
+    fetch_hide
+    fetch_ops
     local index=0
     local found=0
     while read dir pdcat perm user group desc
     do
+	dironly=${dir%/*}
 	found=0
-	if [ -d $dir ]; then # This exists
-	    add_files $dir $pdcat $perm $user $group
+	if [ -d $dironly ]; then # This exists
+	    add_files "$dir" $pdcat $perm $user $group
 	    for i in ${pc[@]} # If $pdcat is already there then don't add it again
 	    do
 		if [ "$i" = "$pdcat" ]; then
@@ -216,8 +331,21 @@ create_idb()
 	fi
     done < $subsysconf	
     $SORT +4u -6 < $idbfile > $metadir/idbtemp
-    mv $metadir/idbtemp $idbfile
-    $RM -f $metadir/idbtemp
+    lines=$(wc -l < $metadir/idbtemp)
+    if [ ! -z $firstop ]; then
+	echo "$(head -1 $metadir/idbtemp) $firstop" > $metadir/idbtemp2
+	tail +2 $metadir/idbtemp >> $metadir/idbtemp2
+    else
+	mv $metadir/idbtemp $metadir/idbtemp2
+    fi
+    if [ ! -z $lastop ]; then
+	let "lines=$lines - 1"
+	echo "$(head -$lines $metadir/idbtemp2)" > $idbfile
+	echo "$(tail -1 $metadir/idbtemp2) $lastop" >> $idbfile
+    else
+	mv $metadir/idbtemp2 $idbfile
+    fi
+    $RM -f $metadir/idbtemp $metadir/idbtemp2
 }
 
 # create_spec(): Create the .spec file.
@@ -229,17 +357,27 @@ create_idb()
 create_spec()
 {
     fetch_imageconf
+    fetch_depends
     spec_header $pkgname "$name $version-$pkgver" > $specfile
     pcsize=${#pc[@]}
-    for i in ${pctop[@]}
+    pctopsize=${#pctop[@]}
+    for ((i=0; i < $pctopsize; i++))
     do
-	pcidx=0
-	spec_img_header $i "${pdtop[$pcidx]}" $version-$pkgver >> $specfile
+	local pcidx=0
+	spec_img_header ${pctop[$i]} "${pdtop[$i]}" $version-$pkgver >> $specfile
 	while [ "$pcidx" -lt "$pcsize" ]
 	do
-	    rv=`$EXPR match "${pc[$pcidx]}" ''$i''`
+	    rv=`$EXPR match "${pc[$pcidx]}" ''${pctop[$i]}''`
 	    if [ ! "$rv" -eq 0 ]; then # We got a hit!
-		spec_subsys $i `echo ${pc[$pcidx]}|$CUT -d . -f 2` "${pd[$pcidx]}" >> $specfile
+		spec_subsys_header ${pctop[$i]} `echo ${pc[$pcidx]}|$CUT -d . -f 2` "${pd[$pcidx]}" >> $specfile
+		reqsize=${#reqs[@]}
+		for ((j=0; j < $reqsize; j++))
+		do
+		    if [ "${reqs[$j]}" == "${pc[$pcidx]}" ]; then 
+			spec_subsys_req "${reqp[$j]}" >> $specfile
+		    fi
+		done
+		spec_subsys_footer >> $specfile
 	    fi
 	    let "pcidx = $pcidx + 1"
 	done
