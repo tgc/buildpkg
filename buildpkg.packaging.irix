@@ -9,12 +9,16 @@ GENDIST=/usr/sbin/gendist
 
 GZIP=/usr/people/tgc/bin/gzip
 BZIP2=/usr/local/bin/bzip2
+STRIP=/bin/true
 
 # Configuration vars
 imageconf=$buildpkgbase/scripts/image.conf
 subsysconf=$buildpkgbase/scripts/subsys.conf
 idbfile=$metadir/$topdir.idb
 specfile=$metadir/$topdir.spec
+
+# Preformat manpages since Irix is not likely to have nroff available
+catman=1
 
 # Other
 # Comment these 4 declarations to get it to run with ksh
@@ -279,12 +283,20 @@ generic_pack()
     # Verify if $1 is defined
     local arg1=${1-'x'}
     case $arg1 in 
-	'x')		setdir $stagedir$topinstalldir
+	'x')		setdir $stagedir$topinstalldir/man
+			if [ $catman -eq 1 ]; then
+			    fix_man
+			fi
+			setdir $stagedir$topinstalldir
 			create_idb
 			create_spec
 			make_dist 
 			;;
-	'shortroot')	setdir stage
+	'shortroot')	setdir $stagedir/man
+			if [ $catman -eq 1 ]; then
+			    fix_man
+			fi
+			setdir stage
 			create_idb
 			create_spec
 			make_dist shortroot
@@ -293,4 +305,3 @@ generic_pack()
 			;;
     esac
 }
-
