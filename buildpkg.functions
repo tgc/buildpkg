@@ -53,6 +53,11 @@ EXPR=/usr/bin/expr
 MV=/usr/bin/mv
 MKDIR=/usr/bin/mkdir
 CP=/usr/bin/cp
+TEE=/bin/tee
+CMP=/bin/cmp
+GREP=/bin/grep
+UNIQ=/bin/uniq
+BASENAME=/bin/basename
 
 # Groff stuff for manpages
 NEQN=/usr/local/bin/neqn
@@ -76,7 +81,15 @@ topinstalldir=/usr/local
 prefix=$topinstalldir
 
 # Docdir relative to $prefix
-docdir=doc
+_docdir=doc
+# Other relative dirs
+_bindir=bin
+_libdir=lib
+_sharedir=share
+_mandir=man
+_infodir=info
+
+tmpdir=/tmp
 
 # pkg information.
 # The following 3 vars can be used when constructing pkg metadata
@@ -113,6 +126,9 @@ E_BAD_CLEANOPTIONS=39
 E_BAD_STRIP=40
 E_BAD_ARGS=41
 E_ARG_OBSO=42
+E_BAD_SECTION_BEGIN=43
+E_BAD_SECTION_END=44
+E_UNPACKAGED_FILES=45
 
 error_txt[$E_BAD_FILE]="File not found"
 error_txt[$E_PATCH_FAILED]="Patch failed"
@@ -124,10 +140,25 @@ error_txt[$E_BAD_COMPRESS]="Unknown compression method"
 error_txt[$E_MISSING_ARGS]="A required argument was missing"
 error_txt[$E_BAD_ARGS]="An illegal argument was passed"
 error_txt[$E_ARG_OBSO]="Function nolonger supports the argument you passed"
+error_txt[$E_BAD_SECTION_BEGIN]="Section start marker found but we are already inside a section!"
+error_txt[$E_BAD_SECTION_END]="Found end of section marker before section begin!"
+error_txt[$E_UNPACKAGED_FILES]="Unpackaged files found in stage area!"
 
 ##################################################### 
 # Helper functions
 #####################################################
+
+# Two very useful utility functions courtesy of the ABS guide (see Example A-22 & A-23)
+# _pls will enclose a string in hard-quotes to avoid expansion
+# _upls will remove hard-quotes from hard-quoted string thus allowing expansion
+_pls() {
+   # local IFS=$'x1B'                # \ESC character (not required)
+    echo $'\x27'$@$'\x27'           # Hard quoted parameter glob
+}
+_upls() {
+   # local IFS=$'x1B'                # \ESC character (not required)
+    eval echo $@                    # Substitution on the glob.
+}
 
 # error(): exit with errorcode and possibly a message
 # params: $1 = errorcode $2 = name of caller
@@ -311,24 +342,74 @@ fix_man()
 
 # doc(): Add files from srcdir to 'docs' location
 # params: $1..$x
-# Copies files from $srcdir to $docdir/$topdir-$version
+# Copies files from $srcdir to $_docdir/$topdir-$version
 doc()
 {
     if [ ! -z $# ]; then
 	setdir source
 	if [ "$shortroot" -eq 1 ]; then
-	    docdir=$stagedir/$docdir/$topdir-$version
+	    _docdir=$stagedir/$_docdir/$topdir-$version
 	else
-	    docdir=$stagedir/$prefix/$docdir/$topdir-$version
+	    _docdir=$stagedir/$prefix/$_docdir/$topdir-$version
 	fi
-	mkdir -p $docdir
+	mkdir -p $_docdir
 	echo "Adding docs"
 	until [ -z "$1" ]
 	do
-	    ($TAR -cf - "$1")|(cd $docdir; tar -xvBpf -)
+	    ($TAR -cf - "$1")|(cd $_docdir; tar -xvBpf -)
 	    shift
 	done
     fi
+}
+
+# compute_octal()
+# Description: Computes the octal value from a permission list (_rwxrwxrwx)
+# param: $1=permission list
+# Caveats: It won't pickup sticky bit and mandatory locking bit
+compute_octal()
+{
+	perm=$1
+	v=0; d1=0; d2=0; d3=0; d4=0
+	# User part
+	if [ "${perm:1:1}" == "r" ]; then
+		let "v = v + 4" # set read bit
+	fi
+	if [ "${perm:2:1}" == "w" ]; then
+		let "v = v + 2" # set write bit
+	fi
+	if [ "${perm:3:1}" == "x" ]; then
+		let "v = v + 1" # set executable bit
+	elif [ "${perm:3:1}" == "s" ]; then
+		let "v = v + 1" # set executable bit
+		let "d1 = d1 + 4" # Set setuid bit
+	fi
+	d2=$v; v=0
+	# Group part
+	if [ "${perm:4:1}" == "r" ]; then
+		let "v = v + 4" # set read bit
+	fi
+	if [ "${perm:5:1}" == "w" ]; then
+		let "v = v + 2" # set write bit
+	fi
+	if [ "${perm:6:1}" == "x" ]; then
+		let "v = v + 1" # set executable bit
+	elif [ "${perm:6:1}" == "s" ]; then
+		let "v = v + 1" # set executable bit
+		let "d1 = d1 + 2" # Set setgid bit
+	fi
+	d3=$v; v=0;
+	# Other part
+	if [ "${perm:7:1}" == "r" ]; then
+		let "v = v + 4" # set read bit
+	fi
+	if [ "${perm:8:1}" == "w" ]; then
+		let "v = v + 2" # set write bit
+	fi
+	if [ "${perm:9:1}" == "x" ]; then
+		let "v = v + 1" # set executable bit
+	fi
+	d4=$v; v=0
+	echo $d1$d2$d3$d4
 }
     
 #####################################################
