@@ -11,6 +11,9 @@ GZIP=/usr/people/tgc/bin/gzip
 BZIP2=/usr/local/bin/bzip2
 STRIP=/bin/true
 
+# This is the hostname command we'll want on Irix
+HOSTNAME=/usr/bsd/hostname
+
 # Configuration vars
 imageconf=$buildpkgbase/scripts/image.conf
 subsysconf=$buildpkgbase/scripts/subsys.conf
@@ -45,7 +48,7 @@ cpu=mips3
 META_CLEAN="$topdir.spec $topdir.idb"
 
 # Host specific configuration
-[ -r $buildpkgbase/scripts/config.`hostname -s`.irix ] && . $buildpkgbase/scripts/config.`hostname -s`.irix
+[ -r $buildpkgbase/scripts/config.$($HOSTNAME -s).irix ] && . $buildpkgbase/scripts/config.$($HOSTNAME -s).irix
 
 distfile=$topdir-$version-$pkgver.tgc-$os-$cpu-$pkgdirdesig.tardist
 
@@ -456,12 +459,15 @@ create_spec()
 }
 
 # make_dist(): Create inst image
-# params: $1=[shortroot]
+# params: none
 # Run gendist to create the instimage
 make_dist()
 {
-    local arg1=${1-'x'}
-    if [ "$arg1" == "shortroot" ]; then
+    if [ "$1" == "shortroot" ]; then
+	error $E_ARG_OBSO make_dist
+    fi
+
+    if [ "$shortroot" -eq 1 ]; then
 	sbase=$stagedir
     else
 	sbase=$stagedir/$topinstalldir
@@ -482,33 +488,28 @@ make_dist()
 # params: $1 - indicating whether or not the root is complete as described below
 # We expect generic_install to have made $stagedir the "root" dir
 # in that all paths below will be complete (ie. /usr/local/bin and not
-# just bin) *unless* $1=shortroot.
+# just bin) *unless* shortroot=1.
 generic_pack()
 {   
+    if [ "$1" == "shortroot" ]; then
+	error $E_ARG_OBSO generic_pack
+    fi
     clean meta
 
-    # Verify if $1 is defined
-    local arg1=${1-'x'}
-    case $arg1 in 
-	'x')		if [ $catman -eq 1 -a -d $stagedir$topinstalldir/man ]; then
-			    setdir $stagedir$topinstalldir/man	    
-			    fix_man
-			fi
-			setdir $stagedir$topinstalldir
-			create_idb
-			create_spec
-			make_dist 
-			;;
-	'shortroot')	if [ $catman -eq 1 -a -d $stagedir/man ]; then
-			    setdir $stagedir/man
-			    fix_man
-			fi
-			setdir stage
-			create_idb
-			create_spec
-			make_dist shortroot
-			;;
-	'*')		error $E_BAD_ARGS generic_pack
-			;;
-    esac
+    if [ "$shortroot" -eq 1 ]; then
+	if [ $catman -eq 1 -a -d $stagedir/man ]; then
+	    setdir $stagedir/man
+	    fix_man
+	fi
+	setdir stage
+    else
+	if [ $catman -eq 1 -a -d $stagedir$topinstalldir/man ]; then
+	    setdir $stagedir$topinstalldir/man
+	    fix_man
+	fi
+	setdir $stagedir$topinstalldir
+    fi
+    create_idb
+    create_spec
+    make_dist
 }

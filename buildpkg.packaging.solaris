@@ -154,22 +154,21 @@ add_file()
 # Define generic functions for different build stages
 #####################################################
 # generic_pack(): Build package using files from 'install' stage
-# params: $1 - indicating whether or not the root is complete as described below
+# params: none
 # We expect generic_install to have made $stagedir the "root" dir
 # in that all paths below will be complete (ie. /usr/local/bin and not
-# just bin) *unless* $1=shortroot.
+# just bin) *unless* shortroot=1.
 generic_pack()
 {
+    if [ "$1" == "shortroot" ]; then
+	error $E_ARG_OBSO generic_pack
+    fi
     clean meta
-    # Verify if $1 is defined
-    local arg1=${1-'x'}
-    case $arg1 in
-	'x') setdir "$stagedir$prefix" # arg1 was undefined
-	    ;;
-	'shortroot') setdir "$stagedir"
-		    ;;
-	'*') error $E_BAD_ARGS generic_pack
-    esac
+    if [ "$shortroot" -eq 1" ]; then
+	setdir "$stagedir"
+    else
+	setdir "$stagedir$prefix"
+    fi
     pack_info
     prototype root bin script
     make_pkg

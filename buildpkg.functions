@@ -75,6 +75,9 @@ srcfiles=$buildpkgbase/srcfiles
 topinstalldir=/usr/local
 prefix=$topinstalldir
 
+# Docdir relative to $prefix
+docdir=doc
+
 # pkg information.
 # The following 3 vars can be used when constructing pkg metadata
 # Override as necessary.
@@ -87,6 +90,7 @@ pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
 # Functionality controls
 catman=0   # Don't fix manpages pr. default
 dostrip=1   # default to stripping binaries during the install stage
+shortroot=0 # Shallow or deep stagedir?
 
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
@@ -108,6 +112,7 @@ E_BAD_MAKE=38
 E_BAD_CLEANOPTIONS=39
 E_BAD_STRIP=40
 E_BAD_ARGS=41
+E_ARG_OBSO=42
 
 error_txt[$E_BAD_FILE]="File not found"
 error_txt[$E_PATCH_FAILED]="Patch failed"
@@ -118,6 +123,7 @@ error_txt[$E_BAD_COMPRESS]="Unknown compression method"
 #error_txt[$E_BAD_MAKE]="make failed"
 error_txt[$E_MISSING_ARGS]="A required argument was missing"
 error_txt[$E_BAD_ARGS]="An illegal argument was passed"
+error_txt[$E_ARG_OBSO]="Function nolonger supports the argument you passed"
 
 ##################################################### 
 # Helper functions
@@ -303,6 +309,28 @@ fix_man()
     done
 }
 
+# doc(): Add files from srcdir to 'docs' location
+# params: $1..$x
+# Copies files from $srcdir to $docdir/$topdir-$version
+doc()
+{
+    if [ ! -z $# ]; then
+	setdir source
+	if [ "$shortroot" -eq 1 ]; then
+	    docdir=$stagedir/$docdir/$topdir-$version
+	else
+	    docdir=$stagedir/$prefix/$docdir/$topdir-$version
+	fi
+	mkdir -p $docdir
+	echo "Adding docs"
+	until [ -z "$1" ]
+	do
+	    ($TAR -cf - "$1")|(cd $docdir; tar -xvBpf -)
+	    shift
+	done
+    fi
+}
+    
 #####################################################
 # Define generic functions for different build stages
 #####################################################
