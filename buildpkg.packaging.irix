@@ -549,8 +549,8 @@ parse_def()
                 fi
                 ;;
             *)
-                equalindex=$(expr index "$line" =)
-                if [ ! $equalindex -eq 0 ]; then
+                equalindex=$(expr index "$line" "\=")
+                if [ $equalindex -ne 0 ]; then
                     case "${line:0:(($equalindex-1))}" in
                         'pkgname')
                                     pkgname="$(_upls ${line:$equalindex:${#line}})"
