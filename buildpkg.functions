@@ -66,6 +66,7 @@ LN=/usr/bin/ln
 GINSTALL=/usr/local/bin/install # BSD compatible install - usually GNU install
 COMPRESS=/usr/bsd/compress
 SHA1SUM=/usr/local/bin/sha1sum
+UNZIP=/usr/local/bin/unzip
 
 # Groff stuff for manpages
 NROFF=/usr/local/bin/nroff
@@ -256,7 +257,7 @@ patch()
 # unpack(): Unpack source
 # params: $1 = source number (arrayindex)
 # It will detect filetype and unpack
-# .tar, .tgz, .gz, .bz2 and .Z supported
+# .tar, .tgz, .gz, .bz2, zip and .Z supported
 unpack()
 {
     local snum=$1
@@ -279,6 +280,7 @@ unpack()
 	    'bz2') $BZIP2 -dc ${source[$snum]} | $TAR -xf -;;
 	    'Z') $GZIP -dc ${source[$snum]} | $TAR -xf -;;
 	    'tgz') $GZIP -dc ${source[$snum]} | $TAR -xf -;;
+	    'zip') $UNZIP -q ${source[$snum]};;
 	    *) error $E_BAD_COMPRESS unpack
 	esac
 	if [ $? -ne 0 ]; then
