@@ -861,9 +861,9 @@ generic_pack()
     local dir_prefix="${prefix#$topinstalldir*}"
 
     if [ "$shortroot" -eq 1 ]; then
-	if [ $catman -eq 1 -a -d $stagedir/${_mandir} ]; then
+	if [ -d $stagedir/${_mandir} ]; then
 	    setdir $stagedir/${_mandir}
-	    fix_man
+	    [ "$catman" -eq 1 ] && fix_man
 	    [ "$gzman" -eq 1 ] && compress_man
 	fi
 	if [ $gzinfo -eq 1 -a -d ${stagedir}/${_infodir} ]; then
@@ -873,9 +873,9 @@ generic_pack()
 	setdir stage
 	metainstalldir=/
     else
-	if [ $catman -eq 1 -a -d ${stagedir}${topinstalldir}${dir_prefix}/${_mandir} ]; then
+	if [ -d ${stagedir}${topinstalldir}${dir_prefix}/${_mandir} ]; then
 	    setdir ${stagedir}${topinstalldir}${dir_prefix}/${_mandir}
-	    fix_man
+	    [ "$catman" -eq 1 ] && fix_man
 	    [ "$gzman" -eq 1 ] && compress_man
 	fi
 	if [ $gzinfo -eq 1 -a -d ${stagedir}/${_infodir} ]; then
