@@ -59,8 +59,9 @@ UNIQ=/bin/uniq
 BASENAME=/bin/basename
 DIRNAME=/bin/dirname
 TR=/bin/tr
-DIFF=/usr/local/bin/diff # *Must* support -u (like GNU Diff)
 FILE=/usr/bin/file # Used by do_strip()
+PRINTF="/usr/bin/printf"
+LN=/usr/bin/ln
 
 # Groff stuff for manpages
 NEQN=/usr/local/bin/neqn
@@ -347,6 +348,11 @@ do_strip()
 # Run from 'cwd' where 'cwd' contains manX subdirs
 fix_man()
 {
+    local i
+    local catdir
+    local manpage
+    local TARGET
+
     echo "Formatting manpages"
     for i in man?
     do
@@ -358,7 +364,7 @@ fix_man()
 	    do
 		if [ -L "$manpage" ]; then
 		    TARGET=$($LS -l "$manpage" | $AWK '{ print $NF }')
-		    ln -snf "$TARGET".gz "$manpage".gz
+		    $LN -snf "$TARGET".gz "$manpage".gz
 		    $MV "$manpage".gz "../$catdir"
 		    $RM -f "$manpage"
 		else
