@@ -4,7 +4,7 @@
 #
 # params: $1=topdir ie. bash
 #
-. ${HOME}/buildpkg/scripts/buildpkg.functions
+. ${BUILDPKG_BASE}/scripts/buildpkg.functions
 
 REQ_DIRS="stage src meta"
 
