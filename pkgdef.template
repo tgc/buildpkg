@@ -1,0 +1,10 @@
+[main]
+pkgname="$pkgprefix""$topdir"
+name="$topdir"
+pkgcat="application"
+pkgvendor="http://change.me/please"
+pkgdesc="mumble mubmle... hmm someone forgot to fill this out!"
+pkgver="$pkgver"
+files(-,root,bin)
+$_bindir
+$_libdir

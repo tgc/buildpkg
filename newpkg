@@ -28,3 +28,7 @@ if [ "$($UNAME -s)" == "IRIX" ]; then
     $SED -e 's/bin\/bash/usr\/local\/bin\/bash/g' $arg1/build.sh > $arg1/build.sh.tmp
     $MV $arg1/build.sh.tmp $arg1/build.sh
 fi
+
+if [ "$($UNAME -s)" == "SunOS" ]; then
+    cp scripts/pkgdef.template $arg1/meta/pkgdef
+fi
