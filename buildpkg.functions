@@ -83,6 +83,7 @@ srcfiles=$buildpkgbase/srcfiles
 
 topinstalldir=/usr/local
 prefix=$topinstalldir
+metainstalldir=$topinstalldir
 
 # Keep this in hard-quotes to delay expansion
 configure_args='--prefix=$prefix --disable-nls'
@@ -91,6 +92,7 @@ configure_args='--prefix=$prefix --disable-nls'
 _docdir=share/doc
 # Other relative dirs
 _bindir=bin
+_sbindir=sbin
 _libdir=lib
 _sharedir=share
 _mandir=man
@@ -118,6 +120,10 @@ dostrip_elf=1   # default to stripping binaries during the install stage
 dostrip_shared=1 # default to stripping shared objects during the install stage
 dostrip_static=1 # default to stripping static archives during the install stage
 shortroot=0 # Deep or shallow stagedir?
+
+# This is meant to aid custom install functions that wants
+# to skip the clean stage & make install parts of generic_install
+custom_install=0
 
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
@@ -496,7 +502,7 @@ generic_build()
     if [ $? -ne 0 ]; then
 	error $E_BAD_CONFIG generic_build
     fi
-    $MAKE_PROG
+    $MAKE_PROG 
     if [ $? -ne 0 ]; then
 	error $E_BAD_MAKE generic_build
     fi
@@ -513,11 +519,13 @@ generic_install()
     if [ "$arg1" != "x" ]; then
 	destvar=$arg1 # $1 was defined
     fi 
-    clean stage
-    setdir source
-    $MAKE_PROG $destvar=$stagedir install
-    if [ $? -ne 0 ]; then
-	error $E_BAD_MAKE generic_install
+    if [ "$custom_install" -eq 0 ]; then
+	clean stage
+	setdir source
+	$MAKE_PROG $destvar=$stagedir install
+	if [ $? -ne 0 ]; then
+	    error $E_BAD_MAKE generic_install
+	fi
     fi
     if [ $dostrip -eq 1 ]; then
        do_strip

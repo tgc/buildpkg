@@ -251,6 +251,38 @@ add_files()
 	IFS=$OIFS
 }
 
+# add_dir(): Add a single dir entry to the IDB file
+# params: $1=dir $2=subsys $3=default permissons $4=defuid $5=defgid
+# Currently ops and specattr are unimplemented for dirs
+add_dir()
+{
+    local fspec=$(_upls $1)
+    local prodcat=$2
+    local defperm=$3
+    local owner=$4
+    local group=$5
+
+    # Note that dir blablah is *not* added to $metadir/files.tmp
+    local FILES=$($FIND $fspec -type d -print)
+    OIFS=$IFS
+    IFS="
+    "
+    for i in $FILES
+    do
+	IFS=$OIFS
+	if [ "$defperm" == "-" ]; then
+		permlist=$($LS -ld "$i" | $CUT -d " " -f 1)
+		perm=$(compute_octal $permlist)
+	else
+		perm=$defperm
+	fi
+	fname=$(fix_fname "$i")
+	echo "d $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat}" >>$idbfile
+    done
+    IFS=$OIFS
+}
+    
+
 # fetch_imageconf(): Fetch a list of toplevel image entries with descriptions
 # params: none
 # Discard the ones that we don't have any subsystems for
@@ -396,31 +428,38 @@ do_strip_static()
 # Note that parse_def does most of the work.
 create_idb()
 {
+    local metaprefix
+
     fetch_ops
     parse_def
 
     # hackish - FIXME perhaps?
     local pcpos=${#pc[@]} # First vacant position in the subsys list array $pc
-    if [ -d src ]; then # We have a srcdir which means we have patches, so add them to the idb file
-	add_files "src" opt.src - root sys ""
+    # Compute relative metaprefix
+    # as $metainstalldir - $topinstalldir
+    metaprefix=${metainstalldir##$topinstalldir}
+    metaprefix="${metaprefix#/*}"
+    [ ! -z "$metaprefix" ] && metaprefix="${metaprefix}/"
+
+    if [ -d "${stagedir}${metainstalldir}/src" ]; then # We have a srcdir which means we have patches, so add them to the idb file
+	add_files "${metaprefix}src" opt.src - root sys ""
 	pc[$pcpos]="opt.src"
 	let "pcpos = pcpos + 1"
     fi
-    if [ -d relnotes ]; then # We have releasenotes, add them to idb file
-	add_files "relnotes" opt.relnotes - root sys ""
+    if [ -d "${stagedir}${metainstalldir}/relnotes" ]; then # We have releasenotes, add them to idb file
+	add_files "${metaprefix}relnotes" opt.relnotes - root sys ""
 	pc[$pcpos]="opt.relnotes"
 	let "pcpos = pcpos + 1"
     fi
-    if [ -d dist ]; then # We have spec & idb files
-	add_files "dist" opt.dist - root sys ""
+#    if [ -d "${stagedir}${metainstalldir}/dist" ]; then # We have spec & idb files
+#	add_files "dist" opt.dist - root sys ""
 	pc[$pcpos]="opt.dist"
-    fi
-
-    # Add entries for the spec & idb files (opt.dist), they will be installed later, after they've actually been created
-    echo "f 644 root sys ${topinstalldir:1}/dist/$topdir-$version-$pkgver/$topdir.idb dist/$topdir-$version-$pkgver/$topdir.idb ${pkgname}.opt.dist" >>$idbfile
-    echo "f 644 root sys ${topinstalldir:1}/dist/$topdir-$version-$pkgver/$topdir.spec dist/$topdir-$version-$pkgver/$topdir.spec ${pkgname}.opt.dist" >>$idbfile
-    echo "dist/$topdir-$version-$pkgver/$topdir.idb" >> $metadir/files.tmp
-    echo "dist/$topdir-$version-$pkgver/$topdir.spec" >> $metadir/files.tmp
+	# Add entries for the spec & idb files (opt.dist), they will be installed later, after they've actually been created
+	echo "f 644 root sys ${metainstalldir}/dist/$topdir-$version-$pkgver/$topdir.idb ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb ${pkgname}.opt.dist" >>$idbfile
+	echo "f 644 root sys ${metainstalldir}/dist/$topdir-$version-$pkgver/$topdir.spec ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec ${pkgname}.opt.dist" >>$idbfile
+	echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb" >> $metadir/files.tmp
+	echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec" >> $metadir/files.tmp
+#    fi
 
     $SORT +4u -6 < $idbfile > $metadir/idbtemp
     lines=$(wc -l < $metadir/idbtemp)
@@ -604,8 +643,7 @@ parse_def()
 				line=${line:5}
 			    fi
 			    if [ "${line:0:4}" == "dir " ]; then
-				echo "Hit unsupported 'dir' directive"
-				#add_dir $defaultperms $defaultuid $defaultgid "${line:4}" $secname # Add dir entry
+				add_dir "${line:4}" $subsys $defaultperms $defaultuid $defaultgid # Add dir entry to idb file
 			    else
 				add_files "$line" $subsys $defaultperms $defaultuid $defaultgid "$specattr" # Build idb file from filespec
                             fi
@@ -660,7 +698,7 @@ check_unpackaged()
 # $prefix/src/$topdir-$version-$pkgver for adding to the opt.src subsystem
 auto_src()
 {
-    local distsrcdir="src/$topdir-$version-$pkgver"
+    local distsrcdir="${stagedir}${metainstalldir}/src/$topdir-$version-$pkgver"
     $MKDIR -p $distsrcdir
     # Add patches
     local numpatch=${#patch[@]}
@@ -707,7 +745,7 @@ auto_src()
 auto_rel()
 {
     if [ -r $metadir/relnotes ]; then
-	local relmetadir=relnotes/$topdir-$version-$pkgver
+	local relmetadir=${stagedir}${metainstalldir}/relnotes/$topdir-$version-$pkgver
 	local cf="$(_upls $configure_args)"
 	local fullcf="./configure $cf"
 	local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
@@ -731,7 +769,7 @@ auto_rel()
 # the stagedir under dist/$topdir-$version-$pkgver
 auto_dist()
 {
-    local distmetadir=dist/$topdir-$version-$pkgver
+    local distmetadir=${stagedir}${metainstalldir}/dist/$topdir-$version-$pkgver
     $MKDIR -p $distmetadir
     $CP $idbfile $distmetadir
     $CP $specfile $distmetadir
