@@ -164,7 +164,7 @@ generic_pack()
 	error $E_ARG_OBSO generic_pack
     fi
     clean meta
-    if [ "$shortroot" -eq 1" ]; then
+    if [ "$shortroot" -eq 1 ]; then
 	setdir "$stagedir"
     else
 	setdir "$stagedir$prefix"
