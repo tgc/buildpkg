@@ -30,6 +30,8 @@ pkginfo=$buildpkgbase/scripts/pkginfo.in
 
 # Variables that control functionality
 usedepend=1 # default to looking for a depend file in $metadir
+usescripts=1 # default to add pre/post scripts if available
+ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area 
 
 # Host specific configuration
 [ -r $buildpkgbase/scripts/config.`hostname`.solaris ] && . $buildpkgbase/scripts/config.`hostname`.solaris
@@ -37,31 +39,50 @@ usedepend=1 # default to looking for a depend file in $metadir
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
 # ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
-distfile=$topdir-$version-$pkgver.sb-$os-$cpu-$pkgdirdesig
+# We hardquote it so that we can control when we want it
+# evaluated (using _upls)
+distfile='$secname-$version-$secver.sb-$os-$cpu-$pkgdirdesig'
 
 ##################################################### 
 # "external" functions
 #####################################################
 
 # make_pkg(): Create the final package
-# params: none
+# params: $1 = prototype filename
 #
 make_pkg()
 {
+    if [ $# -lt 1 ]; then
+	error $E_MISSING_ARGS make_pkg
+    fi
+    local prototype=$($BASENAME $1)
+
+    local secname=${prototype##prototype.}
+    local pstamp=$($GREP PSTAMP $metadir/pkginfo.$secname)
+    local secver=$(_upls ${pstamp##PSTAMP=})
+    local dfile=$(_upls $distfile)
+    local pn=$($GREP PKG $metadir/pkginfo.$secname)
+    local pname=$(_upls ${pn##PKG=})
+
     echo "Creating package and transferring it to datastream format"
-    $PKGMK -r `pwd` -d $buildpkgbase/$topdir -o -f $metadir/prototype
-    $PKGTRANS -o -s $buildpkgbase/$topdir $distdir/$distfile $pkgname
-    echo "Done. Package was created as $distfile"
+    $PKGMK -r `pwd` -d $buildpkgbase/$topdir -o -f $metadir/$prototype
+    $PKGTRANS -o -s $buildpkgbase/$topdir $distdir/$dfile $pname
+    echo "Done. Package was created as $dfile"
 }
 
 # pack_info(): Create the pkginfo file
-# params: none
+# params: $1 = metafile suffix
 # Will create the pkginfo file with pkginfo.in as a template
 # Both the template and the result will be in $metadir
 # Substitutions will be done on pkgname,version,pkgver,name & topinstalldir
 # they will be replaced with the value of their variable counterparts
 pack_info()
 {
+    if [ $# -lt 1 ]; then
+	error $E_MISSING_ARGS pack_info
+    fi
+    local secname=$1
+
     $SED -e "s#%%pkgname%%#$pkgname#g" \
 	-e "s#%%version%%#$version#g" \
 	-e "s#%%pkgcat%%#$pkgcat#g" \
@@ -70,7 +91,17 @@ pack_info()
 	-e "s#%%name%%#$name#g" \
 	-e "s#%%topinstalldir%%#$topinstalldir#g" \
 	-e "s#%%pkgdesc%%#$pkgdesc#g" \
-	$pkginfo > $metadir/pkginfo
+	$pkginfo > $metadir/pkginfo.$secname
+}
+
+# list_pkgs(): Find all the section names of all defined pkgs
+# params: none
+list_pkgs()
+{
+    for i in $metadir/prototype.*
+    do
+	echo ${i##prototype.}
+    done
 }
 
 # prototype(): Create a prototype file for pkgmk
@@ -106,24 +137,37 @@ prototype()
 }
 
 # add_meta_file(): add a metafile entry to the prototype file
-# params: $1 = keyword $2 = filename
+# params: $1 = keyword $2 = filename $3 = metafile suffix
 # Additions will be done to the file $metadir/prototype
 add_meta_file()
 {
-    local arg1=${1-'x'}
-    if [ "$arg1" == "x" ]; then
+    if [ $# -lt 3 ]; then
 	error $E_MISSING_ARGS add_meta_file
     fi
-    local arg2=${2-'x'}
-    if [ "$arg2" == "x" ]; then
-	error $E_MISSING_ARGS add_meta_file
-    fi
-    if [ -r "$arg2" ]; then
-	echo "i $arg1=$arg2" >> $metadir/prototype
+    local secname=$3
+    if [ -r "$2" ]; then
+	echo "i $1=$2" >> $metadir/prototype.$secname
     else
 	error $E_BAD_FILE add_meta_file
     fi
 }
+
+# add_scripts(): Add scripts to prototype
+# params: $1 = metafile suffix
+add_scripts()
+{
+    if [ $# -lt 1 ]; then
+	error $E_MISSING_ARGS add_scripts
+    fi
+    local secname=$1
+    if [ $usescripts -eq 1 ]; then
+	[ -r $metadir/preinstall.$secname ] && add_meta_file preinstall "$metadir/preinstall.$secname" $secname
+	[ -r $metadir/postinstall.$secname ] && add_meta_file postinstall "$metadir/postinstall.$secname" $secname
+	[ -r $metadir/preremove.$secname ] && add_meta_file preremove "$metadir/preremove.$secname" $secname
+	[ -r $metadir/postremove.$secname ] && add_meta_file postremove "$metadir/postremove.$secname" $secname
+    fi
+}
+
 # add_file(): add a file entry to the prototype file
 # params: $1 = owner $2 = group $3 = permissions $4 = filename
 # Additions will be done to the file $metadir/prototype
@@ -150,6 +194,191 @@ add_file()
     fi
 }
 
+# add_proto(): Add entries to prototype file
+# params: $1 = permission $2 = owner $3 = group $4 = filespec $5 = metafile suffix
+# $5 is usually the section header from pkgdef
+# Additions will be done to the file $metadir/prototype.$pkgname
+add_proto()
+{
+    if [ $# -lt 5 ]; then
+	error $E_MISSING_ARGS add_proto
+    fi
+    local i
+    local defperm=$1
+    local owner=$2
+    local group=$3
+    local fspec=$(_upls $4)
+    local secname=$5
+
+    local FILES=$($FIND $fspec -type f -print|$TEE -a $metadir/files.tmp)
+    OIFS=$IFS
+    IFS="
+    "
+    for i in $FILES
+    do
+	IFS=$OIFS
+	if [ "$defperm" == "-" ]; then
+	    permlist=$($LS -l "$i" | $CUT -d " " -f 1)
+	    perm=$(compute_octal $permlist)
+	fi
+	echo "f none $i $perm $owner $group" >> $metadir/prototype.$secname
+    done
+    IFS=$OIFS
+    # Handle symlinks
+    local FILES=$($FIND $fspec -type l -print|$TEE -a $metadir/files.tmp)
+    OIFS=$IFS
+    IFS="
+    "
+    for i in $FILES
+    do
+	IFS=$OIFS
+        if [ "$defperm" == "-" ]; then
+            permlist=$($LS -l "$i" | $CUT -d " " -f 1)
+            perm=$(compute_octal $permlist)
+        fi
+	local temp=`$LS -l "$i"|$CUT -d '>' -f 2`
+	local symval=${temp# }
+	echo "s none $i=$symval	$perm $owner $group" >> $metadir/prototype.$secname
+    done
+    IFS=$OIFS
+    # Handle directories
+    local FILES=$($FIND $fspec -type d -print|$TEE -a $metadir/files.tmp)
+    OIFS=$IFS
+    IFS="
+    "
+    for i in $FILES
+    do
+	IFS=$OIFS
+	if [ "$defperm" == "-" ]; then
+            permlist=$($LS -ld "$i" | $CUT -d " " -f 1)
+            perm=$(compute_octal $permlist)
+        fi
+	echo "d none $i $perm $owner $group" >> $metadir/prototype.$secname
+    done
+    IFS=$OIFS
+    # Handle hardlinks - FIXME!
+}
+
+# add_dir(): Add a single dir to prototype file
+# params: $1 = perms $2 = owner $3 = group $4 = dir $5 = metafile suffix
+add_dir()
+{
+    if [ $# -lt 5 ]; then
+	error $E_MISSING_ARGS add_dir
+    fi
+    local defperm=$1
+    local owner=$2
+    local group=$3
+    local dir=$(_upls $4)
+    local secname=$5
+    
+    if [ "$defperm" == "-" ]; then
+	permlist=$($LS -ld "$dir" | $CUT -d " " -f 1)
+	perm=$(compute_octal $permlist)
+    fi
+    echo "d none $dir $perm $owner $group" >> $metadir/prototype.$secname
+    echo "$dir" >> $metadir/files.tmp
+}
+
+
+# parse_pkgdef(): Read in $metadir/pkgdef
+# params: none
+# This will parse the package descriptions in
+# pkgdef that tells us how many packages there
+# should be and what they include.
+parse_def()
+{
+    local section=0
+    local foundfiles=0
+    local secname=""
+
+    while read line
+    do
+	echo $line
+	case ${line:0:1} in
+	    '#') ;;
+	    '[')
+		if [ $section -eq 1 ]; then
+		    error $E_BAD_SECTION_BEGIN parse_def
+		else
+		    section=1
+		    secname=${line:1:((${#line}-2))}
+		fi
+		;;
+	    '')
+		if [ $section -eq 0 ]; then
+		    error $E_BAD_SECTION_END parse_def
+		else
+		    section=0 # Finished this section
+		    foundfiles=0 #
+		    # Add scripts if requested
+		    add_scripts $secname
+		fi
+		;;
+	    *)
+		equalindex=$(expr index "$line" =)
+		if [ ! $equalindex -eq 0 ]; then
+		    case "${line:0:(($equalindex-1))}" in
+			'pkgname')
+				    pkgname="$(_upls ${line:$equalindex:${#line}})"
+				    ;;
+			'name')
+				    name="$(_upls ${line:$equalindex:${#line}})"
+				    ;;
+			'pkgcat')   
+				    pkgcat="$(_upls ${line:$equalindex:${#line}})"
+				    ;;
+			'pkgvendor')
+				    pkgvendor="$(_upls ${line:$equalindex:${#line}})"
+				    ;;
+			'pkgdesc')
+				    pkgdesc="$(_upls ${line:$equalindex:${#line}})"
+				    ;;
+			'pkgver')   
+				    pkgver="$(_upls ${line:$equalindex:${#line}})"
+				    ;;
+		    esac
+		else # Perhaps we hit 'files'?
+		    if [ "${line:0:5}" == "files" ]; then
+			triplet="${line:6:((${#line}-5-2))}"
+			defaultperms=$(echo $triplet | awk -F, '{ print $1 }')
+			defaultuid=$(echo $triplet | awk -F, '{ print $2 }')
+			defaultgid=$(echo $triplet | awk -F, '{ print $3 }')
+			foundfiles=1
+			pack_info $secname # Create pkginfo
+			# Start the prototype file by adding the pkginfo file
+			add_meta_file pkginfo "$metadir/pkginfo.$secname" $secname
+		    else
+			if [ $foundfiles -eq 1 ]; then # We already found the 'files' line so this must be the filelist
+			    if [ "${line:0:4}" == "dir " ]; then
+				add_dir $defaultperms $defaultuid $defaultgid "${line:4}" $secname # Add dir entry
+			    else
+				add_proto $defaultperms $defaultuid $defaultgid "$line" $secname # Build protype file from filespec
+			    fi
+			fi
+		    fi
+		fi
+		;;
+	esac
+    done < $metadir/pkgdef
+}
+
+# check_unpackaged(): Check if there are unpackaged files in the stage area
+# params: none
+check_unpackaged()
+{
+    $FIND . -type f -print|$SED -e 's/\.\///g' > $tmpdir/files.tmp
+    $FIND . -type l -print|$SED -e 's/\.\///g' >> $tmpdir/files.tmp
+    $FIND . -type d -print|$SED -e 's/\.\///g'|$GREP -v '^\.' >> $tmpdir/files.tmp
+    $SORT $metadir/files.tmp|$UNIQ > $tmpdir/f1
+    $SORT $tmpdir/files.tmp > $tmpdir/f2
+    if [ ! "$($CMP $tmpdir/f1 $tmpdir/f2)" == "" ]; then
+	$RM -f $tmpdir/f1 $tmpdir/f2
+	echo error $E_UNPACKAGED_FILES check_unpackaged
+    fi
+    $RM -f $tmpdir/f1 $tmpdir/f2
+}
+    
 #####################################################
 # Define generic functions for different build stages
 #####################################################
@@ -169,7 +398,15 @@ generic_pack()
     else
 	setdir "$stagedir$prefix"
     fi
-    pack_info
-    prototype root bin script
-    make_pkg
+    parse_def
+    if [ "$ignore_unpackaged_files" -eq 0 ]; then
+	check_unpackaged
+    fi
+    #pack_info
+    #prototype root bin script
+    # Create a list of all the packages that we are going to build
+    for i in $(list_pkgs)
+    do
+	make_pkg $i
+    done
 }
