@@ -201,8 +201,9 @@ add_files()
 	local owner=$4
 	local group=$5
 	local specattr=$6
+	local slash=''
 
-	[ ! "$topinstalldir" == "/" ] && topinstalldir="${topinstalldir}/"
+	[ ! "$topinstalldir" == "/" ] && slash='/' #="${topinstalldir}/"
 
 	local FILES=$($FIND $fspec -type f -print|$TEE -a $metadir/files.tmp)
 	OIFS=$IFS # We play IFS tricks so we can handle filenames with embedded spaces
@@ -220,12 +221,12 @@ add_files()
 	    doop=$(check_ops "$i")
 	    fname=$(fix_fname "$i")
 	    if [ ! -z "$specattr" ]; then
-		echo "f $perm $owner $group ${topinstalldir:1}$fname $i ${pkgname}.${prodcat} $specattr" >>$idbfile
+		echo "f $perm $owner $group ${topinstalldir:1}${slash}$fname $i ${pkgname}.${prodcat} $specattr" >>$idbfile
 	    else
 		if [ ! -z "$doop" ]; then
-		    echo "f $perm $owner $group ${topinstalldir:1}$fname $i ${pkgname}.${prodcat} $doop" >>$idbfile
+		    echo "f $perm $owner $group ${topinstalldir:1}${slash}$fname $i ${pkgname}.${prodcat} $doop" >>$idbfile
 		else
-		    echo "f $perm $owner $group ${topinstalldir:1}$fname $i ${pkgname}.${prodcat}" >>$idbfile
+		    echo "f $perm $owner $group ${topinstalldir:1}${slash}$fname $i ${pkgname}.${prodcat}" >>$idbfile
 		fi
 	    fi
 
@@ -248,7 +249,7 @@ add_files()
 	    local temp=`$LS -l "$i"|$CUT -d '>' -f 2`
 	    local symval=${temp# }
 	    fname=$(fix_fname "$i")
-	    echo "l $perm $owner $group ${topinstalldir:1}$fname $i ${pkgname}.${prodcat} symval($symval)" >>$idbfile
+	    echo "l $perm $owner $group ${topinstalldir:1}${slash}$fname $i ${pkgname}.${prodcat} symval($symval)" >>$idbfile
 	done
 	IFS=$OIFS
 }
@@ -460,8 +461,8 @@ create_idb()
 #	add_files "dist" opt.dist - root sys ""
 	pc[$pcpos]="opt.dist"
 	# Add entries for the spec & idb files (opt.dist), they will be installed later, after they've actually been created
-	echo "f 644 root sys ${metainstalldir:1}dist/$topdir-$version-$pkgver/$topdir.idb ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb ${pkgname}.opt.dist" >>$idbfile
-	echo "f 644 root sys ${metainstalldir:1}dist/$topdir-$version-$pkgver/$topdir.spec ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec ${pkgname}.opt.dist" >>$idbfile
+	echo "f 0644 root sys ${metainstalldir:1}dist/$topdir-$version-$pkgver/$topdir.idb ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb ${pkgname}.opt.dist" >>$idbfile
+	echo "f 0644 root sys ${metainstalldir:1}dist/$topdir-$version-$pkgver/$topdir.spec ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec ${pkgname}.opt.dist" >>$idbfile
 	echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb" >> $metadir/files.tmp
 	echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec" >> $metadir/files.tmp
 #    fi
