@@ -17,6 +17,9 @@ patch[0]=
 # Source function library
 . ${HOME}/buildpkg/scripts/buildpkg.functions
 
+# Fill in pkginfo values if necessary
+# using pkgname,name,pkgcat,pkgvendor & pkgdesc
+
 # Define script functions and register them
 METHODS=""
 reg() {
@@ -47,6 +50,12 @@ pack()
     generic_pack
 }
 
+reg distclean
+distclean()
+{
+    clean distclean
+}
+
 ###################################################
 # No need to look below here
 ###################################################
@@ -57,7 +66,7 @@ all()
     for METHOD in $METHODS 
     do
 	case $METHOD in
-	     all*) ;;
+	     all*|*clean) ;;
 	     *) $METHOD
 		;;
 	esac
