@@ -434,20 +434,22 @@ compress_info()
 doc()
 {
     local f
+    local ddir # Holds internal value of _docdir
+
     if [ ! -z $# ]; then
 	setdir source
 	if [ "$shortroot" -eq 1 ]; then
-	    _docdir=$stagedir/$_docdir/$topdir-$version
+	    ddir=$stagedir/$_docdir/$topdir-$version
 	else
-	    _docdir=$stagedir/$prefix/$_docdir/$topdir-$version
+	    ddir=$stagedir/$prefix/$_docdir/$topdir-$version
 	fi
-	mkdir -p $_docdir
+	mkdir -p $dddir
 	echo "Adding docs"
 	until [ -z "$1" ]
 	do
 	    for f in $(_upls $1)
 	    do
-		($TAR -cf - "$f")|(cd $_docdir; $TAR -xvBpf -)
+		($TAR -cf - "$f")|(cd $ddir; $TAR -xvBpf -)
 	    done
 	    shift
 	done
