@@ -46,6 +46,7 @@ XARGS=/usr/bin/xargs
 CAT=/usr/bin/cat
 AWK=/usr/bin/nawk # This must be nawk or GNU awk - plain /usr/bin/awk will *not* work
 SED=/usr/bin/sed
+GSED=/usr/local/bin/sed
 SORT=/usr/bin/sort
 CUT=/usr/bin/cut
 LS=/usr/bin/ls
@@ -91,6 +92,7 @@ configure_args='--prefix=$prefix --disable-nls'
 
 # Docdir relative to $prefix
 _docdir=share/doc
+_vdocdir=${_docdir}/${topdir}-${version}
 # Other relative dirs
 _bindir=bin
 _sbindir=sbin
@@ -383,7 +385,7 @@ do_autonuke()
 	    didnuke=1
 	fi
     fi
-    if [ -d "${_libdir}" -a ! -z "$($LS ${_libdir}/*.la)" ]; then
+    if [ -d "${_libdir}" -a ! -z "$($LS ${_libdir}/*.la 2>/dev/null)" ]; then
 	for i in ${_libdir}/*.la
 	do
 	    echo "Nuking $i"
