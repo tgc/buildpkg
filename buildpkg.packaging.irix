@@ -5,7 +5,7 @@
 # Define tool programs
 # *only* platform specific packaging tools should be listed here
 # generic tools go in buildpkg.functions
-GENDIST=/usr/sbin/gendist
+GENDIST="/usr/sbin/gendist"
 
 GZIP=/usr/people/tgc/bin/gzip
 BZIP2=/usr/local/bin/bzip2
@@ -249,17 +249,19 @@ fetch_imageconf()
 #
 fetch_depends()
 {
-    reqidx=0
-    while read ss req
-    do
-	reqs[$reqidx]=$ss
-	if [ "$req" == "auto" ]; then # auto create depend on sw.base
-	    nver=$(fix_ver "$version-$pkgver")
-	    req="$pkgname $nver $nver"
-	fi
-	reqp[$reqidx]=$req
-	let "reqidx = $reqidx + 1"
-    done < $depends
+    if [ -r $depends ]; then
+	reqidx=0
+	while read ss req
+	do
+	    reqs[$reqidx]=$ss
+	    if [ "$req" == "auto" ]; then # auto create depend on sw.base
+		nver=$(fix_ver "$version-$pkgver")
+		req="$pkgname.sw.base $nver $nver"
+	    fi
+	    reqp[$reqidx]=$req
+	    let "reqidx = $reqidx + 1"
+	done < $depends
+    fi
 }
 
 # fetch_ops(): Fetch ops
@@ -268,33 +270,37 @@ fetch_depends()
 # and the opfiles and opscript arrays
 fetch_ops()
 {
-    opsidx=0
-    while read optype op
-    do
-	case $optype in
-	    'firstop')
-			firstop="$op"
-			;;
-	    'lastop')
-			lastop="$op"
-			;;
-	esac
-	opfiles[$opsidx]=$optype
-	opscript[$opsidx]=$op	
-	let "opsidx = $opsidx + 1"
-    done < $opsfile
+    if [ -r $opsfile ]; then
+	opsidx=0
+	while read optype op
+	do
+	    case $optype in
+		'firstop')
+			    firstop="$op"
+			    ;;
+		'lastop')
+			    lastop="$op"
+			    ;;
+	    esac
+	    opfiles[$opsidx]=$optype
+	    opscript[$opsidx]=$op	
+	    let "opsidx = $opsidx + 1"
+	done < $opsfile
+    fi
 }
 
 #fetch_hide(): Fetch list of files to "hide"
 #params: none
 fetch_hide()
 {
-    hideidx=0
-    while read filen
-    do
-	hide[$hideidx]=$filen
-	let "hideidx = $hideidx + 1"
-    done < $hidefile
+    if [ -r $hidefile ]; then
+	hideidx=0
+	while read filen
+	do
+	    hide[$hideidx]=$filen
+	    let "hideidx = $hideidx + 1"
+	done < $hidefile
+    fi
 }
 
 ##################################
