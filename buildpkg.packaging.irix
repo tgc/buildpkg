@@ -44,7 +44,7 @@ indent12="           "
 # Removes any '.' and '-' characters from a version string
 fix_ver()
 {
-    local ver=`echo $1 | $SED -e 's/\.//g' -e 's/-//g'`
+    local ver=`echo $1 | $SED -e 's/\.//g' -e 's/-//g' -e 's/[a-zA-Z]//g'`
     echo $ver
 }
 # spec_header()
@@ -276,16 +276,18 @@ generic_pack()
 {   
     clean meta
 
-    setdir stage
-    create_idb
-    create_spec
-    
     # Verify if $1 is defined
     local arg1=${1-'x'}
     case $arg1 in 
-	'x')		make_dist # arg1 was undefined
+	'x')		setdir $stagedir$topinstalldir
+			create_idb
+			create_spec
+			make_dist 
 			;;
-	'shortroot')	make_dist shortroot
+	'shortroot')	setdir stage
+			create_idb
+			create_spec
+			make_dist shortroot
 			;;
 	'*')		error $E_BAD_ARGS generic_pack
 			;;
