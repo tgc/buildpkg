@@ -61,6 +61,7 @@ BASENAME=/bin/basename
 DIRNAME=/bin/dirname
 TR=/bin/tr
 DIFF=/usr/local/bin/diff # *Must* support -u (like GNU Diff)
+FILE=/usr/bin/file # Used by strip()
 
 # Groff stuff for manpages
 NEQN=/usr/local/bin/neqn
@@ -111,8 +112,11 @@ pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
 
 # Functionality controls
 catman=0   # Don't fix manpages pr. default
-dostrip=1   # default to stripping binaries during the install stage
-shortroot=0 # Shallow or deep stagedir?
+dostrip=1
+dostrip_elf=1   # default to stripping binaries during the install stage
+dostrip_shared=1 # default to stripping shared objects during the install stage
+dostrip_static=1 # default to stripping static archives during the install stage
+shortroot=0 # Deep or shallow stagedir?
 
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
@@ -323,11 +327,37 @@ clean()
 # On exit cwd is $stagedir
 strip()
 {
+    local f
     setdir stage
-    $FIND . -type f -perm -700 | $XARGS $STRIP
-#    if [ $? -ne 0 ]; then
-#	error $E_BAD_STRIP strip
-#    if
+    # Strip ELF binaries (see brp-strip from RPM)
+    if [ $dostrip_elf -eq 1 ]; then
+	echo "Stripping ELF binaries..."
+	for f in `$FIND . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec $FILE {} \; | \
+	    $GREP -v ' shared object,' | \
+	    $SED -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
+	    $STRIP $strip_elf_args $f || :
+	done
+    fi
+    if [ $dostrip_shared -eq 1 ]; then
+	echo "Stripping ELF shared objects..."
+	# Strip ELF shared objects (see brp-strip-shared from RPM)
+	# Please note we don't restrict our search to executable files because
+	# our libraries are not (should not be, at least) +x.
+	for f in `$FIND . -type f -a -exec $FILE {} \; | \
+	    grep ' shared object,' | \
+	    $SED -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
+	    $STRIP $strip_shared_args $f
+	done
+    fi
+    if [ $dostrip_static -eq 1 ]; then
+	echo "Stripping static archives..."
+	# Strip static libraries. (see brp-strip-static-archive from RPM)
+	for f in `$FIND . -type f -a -exec $FILE {} \; | \
+	    $GREP 'current ar archive' | \
+	    $SED -n -e 's/^\(.*\):[	]*current ar archive,.*/\1/p'`; do
+	    $STRIP $strip_static_args $f
+	done
+    fi
 }
     
 # fix_man(): create compressed pre-formatted manpages from raw ones
