@@ -19,6 +19,10 @@ $_libdir/*.so.*
 subsys=man.man
 files(-,root,sys)
 $_mandir
+
+[info]
+subsys=man.info
+files(-,root,sys)
 $_infodir
 
 [devel]
