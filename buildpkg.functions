@@ -87,7 +87,7 @@ prefix=$topinstalldir
 configure_args='--prefix=$prefix --disable-nls'
 
 # Docdir relative to $prefix
-_docdir=doc
+_docdir=share/doc
 # Other relative dirs
 _bindir=bin
 _libdir=lib
@@ -366,6 +366,7 @@ fix_man()
 # Copies files from $srcdir to $_docdir/$topdir-$version
 doc()
 {
+    local f
     if [ ! -z $# ]; then
 	setdir source
 	if [ "$shortroot" -eq 1 ]; then
@@ -377,7 +378,10 @@ doc()
 	echo "Adding docs"
 	until [ -z "$1" ]
 	do
-	    ($TAR -cf - "$1")|(cd $_docdir; tar -xvBpf -)
+	    for f in $(_upls $1)
+	    do
+		($TAR -cf - "$f")|(cd $_docdir; $TAR -xvBpf -)
+	    done
 	    shift
 	done
     fi
