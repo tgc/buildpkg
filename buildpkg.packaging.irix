@@ -392,7 +392,18 @@ create_idb()
     if [ -d relnotes ]; then # We have releasenotes, add them to idb file
 	add_files "relnotes" opt.relnotes - root sys ""
 	pc[$pcpos]="opt.relnotes"
+	let "pcpos = pcpos + 1"
     fi
+    if [ -d dist ]; then # We have spec & idb files
+	add_files "dist" opt.dist - root sys ""
+	pc[$pcpos]="opt.dist"
+    fi
+
+    # Add entries for the spec & idb files (opt.dist), they will be installed later, after they've actually been created
+    echo "f 644 root sys ${topinstalldir:1}/dist/$topdir-$version-$pkgver/$topdir.idb dist/$topdir-$version-$pkgver/$topdir.idb ${pkgname}.opt.dist" >>$idbfile
+    echo "f 644 root sys ${topinstalldir:1}/dist/$topdir-$version-$pkgver/$topdir.spec dist/$topdir-$version-$pkgver/$topdir.spec ${pkgname}.opt.dist" >>$idbfile
+    echo "dist/$topdir-$version-$pkgver/$topdir.idb" >> $metadir/files.tmp
+    echo "dist/$topdir-$version-$pkgver/$topdir.spec" >> $metadir/files.tmp
 
     $SORT +4u -6 < $idbfile > $metadir/idbtemp
     lines=$(wc -l < $metadir/idbtemp)
@@ -637,28 +648,30 @@ check_unpackaged()
 # for adding to the opt.src subsystem
 auto_src()
 {
-    local distsrcdir="src/$topdir-$version-$pkgver"
-    $MKDIR -p $distsrcdir
 
     local numpatch=${#patch[@]}
     local pnum=0
-    for ((pnum=0; pnum < $numpatch; pnum++))
-    do
-	if [ ! -z ${patch[$pnum]} ]; then # They didn't give us an empty string
-	    if [ "${patch[$pnum]:0:1}" != "/" ]; then # We have a relative pathname
-		# expand to absolute
-		patch[$pnum]=$patchdir/${patch[$pnum]}
-	    fi # We are now sure that $patch[$pnum] contains file with absolute path
-	    echo "Processing patch[$pnum] - ${patch[$pnum]}"
-	    if [ -r ${patch[$pnum]} ]; then # file is readable
-		$CP ${patch[$pnum]} $distsrcdir
+    if [ "$numpatch" -gt 0 ]; then
+	local distsrcdir="src/$topdir-$version-$pkgver"
+	$MKDIR -p $distsrcdir
+	for ((pnum=0; pnum < $numpatch; pnum++))
+	do
+	    if [ ! -z ${patch[$pnum]} ]; then # They didn't give us an empty string
+		if [ "${patch[$pnum]:0:1}" != "/" ]; then # We have a relative pathname
+		    # expand to absolute
+		    patch[$pnum]=$patchdir/${patch[$pnum]}
+		fi # We are now sure that $patch[$pnum] contains file with absolute path
+		echo "Processing patch[$pnum] - ${patch[$pnum]}"
+		if [ -r ${patch[$pnum]} ]; then # file is readable
+		    $CP ${patch[$pnum]} $distsrcdir
+		else
+		    error $E_BAD_FILE patch
+		fi
 	    else
-		error $E_BAD_FILE patch
+		echo "Patch $pnum has empty filename"
 	    fi
-	else
-	    echo "Patch $pnum has empty filename"
-	fi
-    done
+	done
+    fi
 }
 
 # auto_rel(): Fix up and add releasenotes to stagedir
@@ -668,6 +681,18 @@ auto_src()
 auto_rel()
 {
     echo "auto_rel() is unimplemented"
+}
+
+# auto_dist(): Add idb & spec files to stagedir
+# params: none
+# This will copy the newly created idb & spec files to 
+# the stagedir under dist/$topdir-$version-$pkgver
+auto_dist()
+{
+    local distmetadir=dist/$topdir-$version-$pkgver
+    $MKDIR -p $distmetadir
+    $CP $idbfile $distmetadir
+    $CP $specfile $distmetadir
 }
 
 # generic_pack(): Build package using files from 'install' stage
@@ -699,6 +724,7 @@ generic_pack()
     auto_rel # Fix up and add releasenotes
     create_idb
     create_spec
+    auto_dist # Add idb & specfiles to stagedir
     check_unpackaged
     make_dist
 }
