@@ -58,6 +58,7 @@ CMP=/bin/cmp
 GREP=/bin/grep
 UNIQ=/bin/uniq
 BASENAME=/bin/basename
+TR=/bin/tr
 
 # Groff stuff for manpages
 NEQN=/usr/local/bin/neqn
@@ -90,6 +91,8 @@ _mandir=man
 _infodir=info
 
 tmpdir=/tmp
+
+_os=$($UNAME -sr|$SED -e 's/ //g' -e 's/\.//g'|$TR '[A-Z]' '[a-z]')
 
 # pkg information.
 # The following 3 vars can be used when constructing pkg metadata
