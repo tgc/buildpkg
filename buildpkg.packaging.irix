@@ -440,6 +440,7 @@ create_idb()
     metaprefix=${metainstalldir##$topinstalldir}
     metaprefix="${metaprefix#/*}"
     [ ! -z "$metaprefix" ] && metaprefix="${metaprefix}/"
+    [ ! "$metainstalldir" == "/" ] && metainstalldir="${metainstalldir}/"
 
     if [ -d "${stagedir}${metainstalldir}/src" ]; then # We have a srcdir which means we have patches, so add them to the idb file
 	add_files "${metaprefix}src" opt.src - root sys ""
@@ -455,8 +456,8 @@ create_idb()
 #	add_files "dist" opt.dist - root sys ""
 	pc[$pcpos]="opt.dist"
 	# Add entries for the spec & idb files (opt.dist), they will be installed later, after they've actually been created
-	echo "f 644 root sys ${metainstalldir:1}/dist/$topdir-$version-$pkgver/$topdir.idb ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb ${pkgname}.opt.dist" >>$idbfile
-	echo "f 644 root sys ${metainstalldir:1}/dist/$topdir-$version-$pkgver/$topdir.spec ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec ${pkgname}.opt.dist" >>$idbfile
+	echo "f 644 root sys ${metainstalldir:1}dist/$topdir-$version-$pkgver/$topdir.idb ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb ${pkgname}.opt.dist" >>$idbfile
+	echo "f 644 root sys ${metainstalldir:1}dist/$topdir-$version-$pkgver/$topdir.spec ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec ${pkgname}.opt.dist" >>$idbfile
 	echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb" >> $metadir/files.tmp
 	echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec" >> $metadir/files.tmp
 #    fi
