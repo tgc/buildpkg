@@ -50,6 +50,7 @@ SORT=/usr/bin/sort
 CUT=/usr/bin/cut
 LS=/usr/bin/ls
 EXPR=/usr/bin/expr
+MV=/usr/bin/mv
 
 # Groff stuff for manpages
 NEQN=/usr/local/bin/neqn
@@ -279,15 +280,22 @@ fix_man()
     do
 	if [ -d $i ]; then
 	    catdir=cat${i##man}
-	    mkdir $catdir
+	    $MKDIR $catdir
 	    cd $i
-	    for j in *
+	    for manpage in *
 	    do
-		$NEQN $NEQNOPTS $j | $TBL | $NROFF $NROFFOPTS > ../$catdir/$j
-		$GZIP ../$catdir/$j
+		if [ -L "$manpage" ]; then
+		    TARGET=$($LS -l "$manpage" | $AWK '{ print $NF }')
+		    ln -snf "$TARGET".gz "$manpage".gz
+		    $MV "$manpage".gz "../$catdir"
+		    $RM -f "$manpage"
+		else
+		    $NEQN $NEQNOPTS "$manpage" | $TBL | $NROFF $NROFFOPTS > "../$catdir/$manpage"
+		    $GZIP "../$catdir/$manpage"
+		    $RM -f $manpage
+		fi
 	    done
 	    cd ..
-	    rm -rf $i/*
 	    rmdir $i
 	fi
     done
