@@ -270,6 +270,9 @@ unpack()
 # params: $1=stage|source|distclean
 clean()
 {
+    local i
+    local secname
+    local pkgname
     case $1 in
 	'source')   if [ -d "$srcdir/$topsrcdir" ]; then
 			echo "Removing $srcdir/$topsrcdir"
@@ -286,8 +289,17 @@ clean()
 			error $E_BAD_DIR clean
 		    fi
 		    ;;
-	'meta')	    echo "Removing $buildpkgbase/$topdir/$pkgname"
-		    $RM -rf $buildpkgbase/$topdir/$pkgname
+	'meta')	    
+		    if [ "$($UNAME -s)" == "SunOS" ]; then
+			for secname in $(list_pkgs)
+			do
+			    META_CLEAN="$META_CLEAN prototype.$secname pkginfo.$secname"
+			    pkgname=$(get_pkgname $secname)
+			    echo "Removing $buildpkgbase/$topdir/$pkgname"
+			    $RM -rf $buildpkgbase/$topdir/$pkgname
+			done
+		    fi
+
 		    for i in $META_CLEAN
 		    do
 			echo "Removing $metadir/$i"
