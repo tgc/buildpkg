@@ -438,11 +438,7 @@ doc()
 
     if [ ! -z $# ]; then
 	setdir source
-	if [ "$shortroot" -eq 1 ]; then
-	    ddir=$stagedir/$_docdir/$topdir-$version
-	else
-	    ddir=$stagedir/$prefix/$_docdir/$topdir-$version
-	fi
+	ddir=${stagedir}${prefix}/${_docdir}/${topdir}-${version}
 	${MKDIR} -p $ddir
 	echo "Adding docs"
 	until [ -z "$1" ]
@@ -558,8 +554,12 @@ generic_build()
 # params: $1 = destvar
 # destvar is the variable that make should override to install into the staging
 # area. default is DESTDIR, possible common alternatives are prefix and PREFIX
+# If shortroot=1 then we know that the install won't automatically create
+# $prefix inside the stagedir so we have to do it first and add $prefix
+# to the $destvar= argument
 generic_install()
 {
+    local dest="$stagedir"
     local destvar=DESTDIR
     local arg1=${1-'x'}
     if [ "$arg1" != "x" ]; then
@@ -567,8 +567,12 @@ generic_install()
     fi 
     if [ "$custom_install" -eq 0 ]; then
 	clean stage
+	if [ "$shortroot" -eq 1 ]; then
+	    dest="${stagedir}${prefix}"
+	    ${MKDIR} -p "$dest"
+	fi
 	setdir source
-	$MAKE_PROG $destvar=$stagedir install
+	$MAKE_PROG $destvar=$dest install
 	if [ $? -ne 0 ]; then
 	    error $E_BAD_MAKE generic_install
 	fi
@@ -582,7 +586,7 @@ generic_install()
 # params: $1 - indicating whether or not the root is complete as described below
 # We expect generic_install to have made $stagedir the "root" dir
 # in that all paths below will be complete (ie. /usr/local/bin and not
-# just bin) *unless* $1=shortroot.
+# just bin).
 #
 # This function should be implemented in the pr. packaging system
 # function library.
