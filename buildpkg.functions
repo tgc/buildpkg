@@ -38,6 +38,7 @@ BZIP2=/usr/bin/bzip2
 GZIP=/usr/bin/gzip
 PATCH=/usr/local/bin/patch # GNU patch 2.5 or better please!
 RM=/usr/bin/rm
+RMDIR=/usr/bin/rmdir
 MKDIR=/usr/bin/mkdir
 MAKE_PROG=/usr/local/bin/make # GNU make please!
 FIND=/usr/bin/find # vendor supplied find, GNU find will require changes to the script
@@ -149,6 +150,7 @@ E_ARG_OBSO=42
 E_BAD_SECTION_BEGIN=43
 E_BAD_SECTION_END=44
 E_UNPACKAGED_FILES=45
+E_BAD_VERSION=46
 
 error_txt[$E_BAD_FILE]="File not found"
 error_txt[$E_PATCH_FAILED]="Patch failed"
@@ -163,6 +165,7 @@ error_txt[$E_ARG_OBSO]="Function nolonger supports the argument you passed"
 error_txt[$E_BAD_SECTION_BEGIN]="Section start marker found but we are already inside a section!"
 error_txt[$E_BAD_SECTION_END]="Found end of section marker before section begin!"
 error_txt[$E_UNPACKAGED_FILES]="Unpackaged files found in stage area!"
+error_txt[$E_BAD_VERSION]="Version field overflow"
 
 ##################################################### 
 # Helper functions
@@ -323,6 +326,8 @@ clean()
 	'distclean')	clean source
 			clean stage
 			clean meta
+			# Irix only - ugly hack
+			$RM -f $metadir/relnotes*.txt
 			;;
 	*)  error $E_BAD_CLEANOPTION clean
     esac
@@ -378,7 +383,7 @@ fix_man()
 		fi
 	    done
 	    cd ..
-	    rmdir $i
+	    ${RMDIR} $i
 	fi
     done
 }
