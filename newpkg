@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+# A simple script to create a sandbox for a new package
+#
+# params: $1=topdir ie. bash
+#
+. ${HOME}/buildpkg/scripts/buildpkg.functions
+
+REQ_DIRS="stage src meta"
+
+local arg1=${1-'x'}
+if [ "$arg1" == "x" ]; then
+    error $E_MISSING_ARGS
+else
+    setdir "$buildpkgbase"
+fi
+
+echo "Creating sandbox for $arg1"
+mkdir "$arg1"
+for i in $REQ_DIRS
+do
+    mkdir $arg1/$i
+done
+
+cp scripts/build.sh.generic $arg1/build.sh
