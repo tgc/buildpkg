@@ -23,7 +23,6 @@ do
 done
 
 $CP scripts/build.sh.generic $arg1/build.sh
-chmod 755 $arg1/build.sh
 if [ "$($UNAME -s)" == "IRIX" -o "$($UNAME -s)" == "IRIX64" ]; then
     $SED -e 's;bin/bash;usr/local/bin/bash;g' $arg1/build.sh > $arg1/build.sh.tmp
     $MV $arg1/build.sh.tmp $arg1/build.sh
@@ -34,3 +33,5 @@ fi
 if [ "$($UNAME -s)" == "SunOS" ]; then
     $CP scripts/pkgdef.template $arg1/meta/pkgdef
 fi
+# Make build script executable
+chmod 755 $arg1/build.sh
