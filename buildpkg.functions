@@ -51,6 +51,14 @@ CUT=/usr/bin/cut
 LS=/usr/bin/ls
 EXPR=/usr/bin/expr
 
+# Groff stuff for manpages
+NEQN=/usr/local/bin/neqn
+NEQNOPTS="-Tlatin1"
+TBL=/usr/local/bin/tbl
+NROFF=/usr/local/bin/nroff
+NROFFOPTS="-c -man"
+catman=0   # Don't fix manpages pr. default
+
 # Define defaults
 buildpkgbase=$BUILDPKG_BASE
 stagedir=$buildpkgbase/$topdir/stage
@@ -258,6 +266,29 @@ strip()
 #    if
 }
     
+# fix_man(): create compressed pre-formatted manpages from raw ones
+# params: none
+# Run from 'cwd' where 'cwd' contains manX subdirs
+fix_man()
+{
+    echo "Formatting manpages"
+    for i in man?
+    do
+	if [ -d $i ]; then
+	    catdir=cat${i##man}
+	    mkdir $catdir
+	    cd $i
+	    for j in *
+	    do
+		$NEQN $NEQNOPTS $j | $TBL | $NROFF $NROFFOPTS > ../$catdir/$j
+		$GZIP ../$catdir/$j
+	    done
+	    cd ..
+	    rm -rf $i
+	fi
+    done
+}
+
 #####################################################
 # Define generic functions for different build stages
 #####################################################
