@@ -589,10 +589,10 @@ generic_prep()
 }
 
 # generic_build(): Take the necessary steps to build already prepared source
-# params: none
+# params: $1 = dir to descend to *inside* "source" - optional
 generic_build()
 {
-    setdir source
+    setdir ${srcdir}/${topsrcdir}/$1
 
     ./configure $(_upls $configure_args)
     if [ $? -ne 0 ]; then
@@ -605,12 +605,13 @@ generic_build()
 }
 
 # generic_install(): Install already built source
-# params: $1 = destvar
+# params: $1 = destvar [$2 = dir to descend to *inside* "source"]
 # destvar is the variable that make should override to install into the staging
 # area. default is DESTDIR, possible common alternatives are prefix and PREFIX
 # If shortroot=1 then we know that the install won't automatically create
 # $prefix inside the stagedir so we have to do it first and add $prefix
 # to the $destvar= argument
+# If $2 is specified then we will descend into that subdir before attempting the install
 generic_install()
 {
     local dest="$stagedir"
@@ -625,7 +626,7 @@ generic_install()
 	    dest="${stagedir}${prefix}"
 	    ${MKDIR} -p "$dest"
 	fi
-	setdir source
+	setdir ${srcdir}/${topsrcdir}/$2
 	$MAKE_PROG $destvar=$dest install
 	if [ $? -ne 0 ]; then
 	    error $E_BAD_MAKE generic_install
