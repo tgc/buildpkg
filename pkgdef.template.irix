@@ -2,6 +2,7 @@
 pkgname="$pkgprefix""$topdir"
 name="$topdir"
 pkgver="$pkgver"
+pkgvendor="http://change/me/please"
 shortdesc="change me please"
 
 [base]
