@@ -334,6 +334,16 @@ parse_def()
 		;;
 	esac
     done < $metadir/pkgdef
+    # If there is no blank line at the end of a pkgdef section (if there is only one section that is very
+    # likely) then we end up here without having executed the 'section end' actions (case '' above)
+    if [ $section -eq 0 ]; then
+	error $E_BAD_SECTION_END parse_def
+    else
+	section=0 # Finished this section
+	foundfiles=0 #
+	# Add scripts if requested
+	add_scripts $secname
+    fi
 }
 
 # check_unpackaged(): Check if there are unpackaged files in the stage area
