@@ -6,6 +6,7 @@
 # *only* platform specific packaging tools should be listed here
 # generic tools go in buildpkg.functions
 GENDIST="/usr/sbin/gendist"
+GENDIST_OPTS="-nostrip"
 
 GZIP=/usr/people/tgc/bin/gzip
 BZIP2=/usr/local/bin/bzip2
@@ -563,7 +564,7 @@ make_dist()
 
     local dfile=$(_upls $distfile)
 
-    $GENDIST -rbase $topinstalldir -sbase $sbase -idb $idbfile -spec $specfile -dist $disttmp
+    $GENDIST $GENDIST_OPTS -rbase $topinstalldir -sbase $sbase -idb $idbfile -spec $specfile -dist $disttmp
     setdir $disttmp
     $VTAR -cf $distdir/$dfile $pkgname*
 
