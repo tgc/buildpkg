@@ -287,7 +287,8 @@ fix_man()
 		$GZIP ../$catdir/$j
 	    done
 	    cd ..
-	    rm -rf $i
+	    rm -rf $i/*
+	    rmdir $i
 	fi
     done
 }
