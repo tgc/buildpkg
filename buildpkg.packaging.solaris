@@ -39,10 +39,11 @@ pkginfo=$buildpkgbase/scripts/pkginfo.in
 # Variables that control functionality
 usedepend=1 # default to looking for a depend file in $metadir
 usescripts=1 # default to add pre/post scripts if available
+usespace=1 # default to looking for a space file in $metadir
 ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area 
 
-# Compress raw manpages...
-gzman=1
+# Solaris doesn't know how to handle any kind of compressed manpages
+gzman=0
 
 # Host specific configuration
 [ -r $buildpkgbase/scripts/config.`hostname`.solaris ] && . $buildpkgbase/scripts/config.`hostname`.solaris
@@ -92,6 +93,8 @@ pack_info()
     fi
     local secname=$1
 
+    pstamp="$os-$($UNAME -n)`date '+%Y%m%d%H%M'`"
+
     $SED -e "s#%%pkgname%%#$pkgname#g" \
 	-e "s#%%version%%#$version#g" \
 	-e "s#%%pkgcat%%#$pkgcat#g" \
@@ -100,6 +103,7 @@ pack_info()
 	-e "s#%%name%%#$name#g" \
 	-e "s#%%topinstalldir%%#$topinstalldir#g" \
 	-e "s#%%pkgdesc%%#$pkgdesc#g" \
+	-e "s#%%pstamp%%#$pstamp#g" \
 	$pkginfo > $metadir/pkginfo.$secname
 }
 
@@ -144,6 +148,9 @@ add_scripts()
 
     # If a dependency file is available then use it
     [ -r $metadir/depend.$secname -a $usedepend -eq 1 ] && add_meta_file depend "$metadir/depend.$secname" $secname
+
+    # If a space file is available then use it
+    [ -r $metadir/space.$secname -a $usespace -eq 1 ] && add_meta_file space "$metadir/space.$secname" $secname
 
     if [ $usescripts -eq 1 ]; then
 	[ -r $metadir/preinstall.$secname ] && add_meta_file preinstall "$metadir/preinstall.$secname" $secname
