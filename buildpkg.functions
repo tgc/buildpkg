@@ -1,5 +1,5 @@
 #
-# Global config file for buildpkg
+# Global function library for buildpkg
 #
 # This file is designed to be sourced by pr. package buildscripts
 # 
@@ -54,7 +54,15 @@ srcfiles=$buildpkgbase/srcfiles
 topinstalldir=/usr/local
 prefix=$topinstalldir
 
-pkgname=SB$topdir
+# pkginfo information.
+# The following 5 vars will be used when constructing the pkginfo file
+# Override as necessary.
+pkgname=SB$topdir # overriding this will be common
+name=$topdir # as will this ditto
+pkgcat="application"	# A reasonable default
+pkgvendor="http://change/me/please"
+pkgdesc="mumble mubmle... hmm someone forgot to fill this out!"
+
 cpu=sparcv9
 os=sol`$UNAME -r`
 pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
@@ -242,21 +250,28 @@ strip()
 #
 make_pkg()
 {
+    echo "Creating package and transferring it to datastream format"
     $PKGMK -r `pwd` -d $buildpkgbase/$topdir -o -f $metadir/prototype
     $PKGTRANS -o -s $buildpkgbase/$topdir $distdir/$distfile $pkgname
+    echo "Done. Package was created as $distfile"
 }
 
 # pack_info(): Create the pkginfo file
 # params: none
 # Will create the pkginfo file with pkginfo.in as a template
 # Both the template and the result will be in $metadir
-# Substitutions will be done on pkgname,version & pkgver
+# Substitutions will be done on pkgname,version,pkgver,name & topinstalldir
 # they will be replaced with the value of their variable counterparts
 pack_info()
 {
     $SED -e "s#%%pkgname%%#$pkgname#g" \
 	-e "s#%%version%%#$version#g" \
+	-e "s#%%pkgcat%%#$pkgcat#g" \
+	-e "s#%%pkgvendor%%#$pkgvendor#g" \
 	-e "s#%%pkgver%%#$pkgver#g" \
+	-e "s#%%name%%#$name#g" \
+	-e "s#%%topinstalldir%%#$topinstalldir#g" \
+	-e "s#%%pkgdesc%%#$pkgdesc#g" \
 	$metadir/pkginfo.in > $metadir/pkginfo
 }
 
@@ -307,6 +322,31 @@ add_meta_file()
     fi
     if [ -r "$arg2" ]; then
 	echo "i $arg1=$arg2" >> $metadir/prototype
+    else
+	error $E_BAD_FILE add_meta_file
+    fi
+}
+# add_file(): add a file entry to the prototype file
+# params: $1 = owner $2 = group $3 = permissions $4 = filename
+# Additions will be done to the file $metadir/prototype
+# $4 must be relative to $stagedir$prefix (or just $stagedir if using shortroot)
+# We will not check for the existence of $4
+add_file()
+{
+    local arg1=${1-'x'}
+    if [ "$arg1" == "x" ]; then
+	error $E_MISSING_ARGS add_metae
+    fi
+    local arg2=${2-'x'}
+    if [ "$arg2" == "x" ]; then
+	error $E_MISSING_ARGS add_meta
+    fi
+    local arg3=${3-'x'}
+    if [ "$arg2" == "x" ]; then
+	error $E_MISSING_ARGS add_meta
+    fi
+    if [ -r "$arg4" ]; then
+	echo "f none $arg4 $3 $1 $2" >> $metadir/prototype
     else
 	error $E_BAD_FILE add_meta_file
     fi
