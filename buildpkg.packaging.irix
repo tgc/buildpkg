@@ -45,6 +45,9 @@ distfile=$topdir-$version-$pkgver.tgc-$os-$cpu-$pkgdirdesig.tardist
 
 META_CLEAN="$topdir.spec $topdir.idb"
 
+# Host specific configuration
+[ -r $buildpkgbase/scripts/config.`hostname`.irix ] && . $buildpkgbase/scripts/config.`hostname`.irix
+
 ##################################################### 
 # Internal helper functions
 #####################################################
