@@ -56,6 +56,7 @@ indent4="   "
 indent8="       "
 indent12="           "
 indent16="               "
+indent24="                       "
 # fix_ver(): "normalize" a version-pkgver pair
 # params: $1=version
 # Removes any '.' and '-' characters from a version string
@@ -99,11 +100,23 @@ spec_subsys_header()
 	echo "$indent12 replaces self"
 	echo "$indent12 exp $pkgname.$1.$2"
 }
+# spec_subsys_req_header()
+# param: none
+spec_subsys_req_header()
+{
+    echo "$indent16 prereq ("
+}
 # spec_subsys_req()
 # param: $1=prereq
 spec_subsys_req()
 {
-    echo "$indent16 prereq ( $1 )"
+    echo "$indent24 $1"
+}
+# spec_subsys_req_footer()
+# param: none
+spec_subsys_req_footer()
+{
+    echo "$indent24"")"
 }
 # spec_subsys_footer()
 # param: none
@@ -396,8 +409,8 @@ create_spec()
     fetch_imageconf
     fetch_depends
     spec_header $pkgname "$name $version-$pkgver" > $specfile
-    pcsize=${#pc[@]}
-    pctopsize=${#pctop[@]}
+    local pcsize=${#pc[@]}
+    local pctopsize=${#pctop[@]}
     for ((i=0; i < $pctopsize; i++))
     do
 	local pcidx=0
@@ -408,12 +421,31 @@ create_spec()
 	    if [ ! "$rv" -eq 0 ]; then # We got a hit!
 		spec_subsys_header ${pctop[$i]} `echo ${pc[$pcidx]}|$CUT -d . -f 2` "${pd[$pcidx]}" >> $specfile
 		reqsize=${#reqs[@]}
+		declare -a reqidlist
+		reqidlidx=0
 		for ((j=0; j < $reqsize; j++))
 		do
 		    if [ "${reqs[$j]}" == "${pc[$pcidx]}" ]; then 
-			spec_subsys_req "${reqp[$j]}" >> $specfile
+			reqidlist[$reqidlidx]=$j
+			let "reqidlidx=$reqidlidx + 1"
 		    fi
 		done
+		reqidlsize=${#reqidlist[@]}
+		if [ "$reqidlsize" -eq 1 ]; then
+		    id=${reqidlist[1]}
+		    spec_subsys_req_header >> $specfile
+		    spec_subsys_req "${reqp[$id]}" >> $specfile
+		    spec_subsys_req_footer >> $specfile
+		fi
+		if [ "$reqidlsize" -gt 1 ]; then
+		    spec_subsys_req_header >> $specfile
+		    for ((j=1; j < $reqidlsize; j++))
+		    do
+			id=${reqidlist[$j]}
+			spec_subsys_req "${reqp[$id]}" >> $specfile
+		    done
+		    spec_subsys_req_footer >> $specfile
+		fi
 		spec_subsys_footer >> $specfile
 	    fi
 	    let "pcidx = $pcidx + 1"
