@@ -25,13 +25,19 @@ pkgdesc="mumble mubmle... hmm someone forgot to fill this out!"
 cpu=sparcv9
 os=sol`$UNAME -r`
 
+# Default pkginfo.in file
+pkginfo=$buildpkgbase/scripts/pkginfo.in
+
+# Variables that control functionality
+usedepend=1 # default to looking for a depend file in $metadir
+
+# Host specific configuration
+[ -r $buildpkgbase/scripts/config.`hostname`.solaris ] && . $buildpkgbase/scripts/config.`hostname`.solaris
+
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
 # ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
 distfile=$topdir-$version-$pkgver.sb-$os-$cpu-$pkgdirdesig
-
-# Variables that control functionality
-usedepend=1 # default to looking for a depend file in $metadir
 
 ##################################################### 
 # "external" functions
@@ -64,7 +70,7 @@ pack_info()
 	-e "s#%%name%%#$name#g" \
 	-e "s#%%topinstalldir%%#$topinstalldir#g" \
 	-e "s#%%pkgdesc%%#$pkgdesc#g" \
-	$metadir/pkginfo.in > $metadir/pkginfo
+	$pkginfo > $metadir/pkginfo
 }
 
 # prototype(): Create a prototype file for pkgmk
