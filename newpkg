@@ -19,13 +19,13 @@ echo "Creating sandbox for $arg1"
 $MKDIR "$arg1"
 for i in $REQ_DIRS
 do
-    mkdir $arg1/$i
+    $MKDIR $arg1/$i
 done
 
 $CP scripts/build.sh.generic $arg1/build.sh
 chmod 755 $arg1/build.sh
 if [ "$($UNAME -s)" == "IRIX" ]; then
-    $SED -e 's/bin\/bash/usr\/local\/bin\/bash/g' $arg1/build.sh > $arg1/build.sh.tmp
+    $SED -e 's;bin/bash;usr/local/bin/bash;g' $arg1/build.sh > $arg1/build.sh.tmp
     $MV $arg1/build.sh.tmp $arg1/build.sh
     $CP scripts/pkgdef.template.irix $arg1/meta/pkgdef
     $CP scripts/relnotes.template.irix $arg1/meta/relnotes
