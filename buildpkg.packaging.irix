@@ -166,7 +166,7 @@ compute_octal()
 # params: $1=file to check against $hide
 check_hide()
 {
-    local file=$1
+    local file="$1"
     for ((i=0; $i < ${#hide[@]}; i++))
     do
 	if [ "${hide[$i]}" == "$file" ]; then
@@ -178,18 +178,32 @@ check_hide()
 # param: $1=file to check
 check_ops()
 {
-    local file=$1
+    local file="$1"
     local return
-    echo "file is $file" >> /tmp/debug
+    #echo "file is $file" >> /tmp/debug
     for ((i=0; $i < ${#opfiles[@]}; i++))
     do
-	echo "opfiles $i is ${opfiles[$i]}" >> /tmp/debug
+	#echo "opfiles $i is ${opfiles[$i]}" >> /tmp/debug
 	if [ "${opfiles[$i]}" == "$file" ]; then
 	    return="${opscript[$i]}"
 	fi
     done
     echo $return
 }
+# fix_fname(): Sanitize filename
+# param: $1=filename to fix
+# The purpose is to "fix" filenames that gendist won't like
+# ie. names with space are a no-no.
+fix_fname()
+{
+    local name="$1"
+    local return
+    
+    # Replace ' ' with '_'
+    return=$(echo $name|$SED -e 's/ /_/g')
+    echo $return
+}
+    
 # add_files()
 # Create IDB entries for all files in a specfic product category
 # Takes the following parameters
@@ -202,36 +216,49 @@ add_files()
 {
 	local perm=$3
 	local FILES=`$FIND $1 -type f -print`
+	OIFS=$IFS # We play IFS tricks so we can handle filenames with embedded spaces
+	IFS="
+	"
 	for i in $FILES
 	do
+		IFS=$OIFS
 		if [ "$3" == "keep" ]; then
-			permlist=`$LS -l $i | $CUT -d " " -f 1`
+			permlist=`$LS -l "$i" | $CUT -d " " -f 1`
 			perm=$(compute_octal $permlist)	
 		fi
-		nohist=$(check_hide $i)
-		doop=$(check_ops $i)
+		nohist=$(check_hide "$i")
+		doop=$(check_ops "$i")
+		fname=$(fix_fname "$i")
 		if [ ! -z "$nohist" ]; then
-		    echo "f $perm $4 $5 ${topinstalldir:1}/$i $i $pkgname.$2 nohist" >>$idbfile
+		    echo "f $perm $4 $5 ${topinstalldir:1}/$fname $i $pkgname.$2 nohist" >>$idbfile
 		else
 		    if [ ! -z "$doop" ]; then
-			echo "f $perm $4 $5 ${topinstalldir:1}/$i $i $pkgname.$2 $doop" >>$idbfile
+			echo "f $perm $4 $5 ${topinstalldir:1}/$fname $i $pkgname.$2 $doop" >>$idbfile
 		    else
-			echo "f $perm $4 $5 ${topinstalldir:1}/$i $i $pkgname.$2" >>$idbfile
+			echo "f $perm $4 $5 ${topinstalldir:1}/$fname $i $pkgname.$2" >>$idbfile
 		    fi
 		fi
 
 	done
+	IFS=$OIFS
+	# Handle symlinks
 	local FILES=`$FIND $1 -type l -print`
+	OIFS=$IFS
+	IFS="
+	"
 	for i in $FILES
 	do
+		IFS=$OIFS
 		if [ "$3" == "keep" ]; then
-			permlist=`$LS -l $i | $CUT -d " " -f 1`
+			permlist=`$LS -l "$i" | $CUT -d " " -f 1`
 			perm=`compute_octal $permlist`	
 		fi
-		local temp=`$LS -l $i|$CUT -d '>' -f 2`
+		local temp=`$LS -l "$i"|$CUT -d '>' -f 2`
 		local symval=${temp# }
-		echo "l $perm $4 $5 ${topinstalldir:1}/$i $i $pkgname.$2 symval($symval)" >>$idbfile
+		fname=$(fix_fname "$i")
+		echo "l $perm $4 $5 ${topinstalldir:1}/$fname $i $pkgname.$2 symval($symval)" >>$idbfile
 	done
+	IFS=$OIFS
 }
 
 # fetch_imageconf(): Fetch a list of toplevel image entries with descriptions
