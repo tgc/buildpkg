@@ -45,6 +45,8 @@ pkgname=$pkgprefix$topdir
 os=irix`$UNAME -r`
 cpu=mips3
 
+configure_args='--prefix=$prefix'
+
 META_CLEAN="$topdir.spec $topdir.idb"
 
 # Host specific configuration
@@ -315,9 +317,14 @@ create_idb()
     local found=0
     while read dir pdcat perm user group desc
     do
-	dironly=${dir%/*}
+	#local wildcardpos=$($EXPR index "$dir" '*?')
+	#if [ $wildcardpos -gt 2 ]; then
+	#    dironly=${dir:0:(($wildcardpos-2))}
+	#else
+	#    dironly=$($DIRNAME $dir)
+	#fi
 	found=0
-	if [ -d $dironly ]; then # This exists
+	#if [ -d $dironly ]; then # This exists
 	    add_files "$dir" $pdcat $perm $user $group
 	    for i in ${pc[@]} # If $pdcat is already there then don't add it again
 	    do
@@ -331,7 +338,7 @@ create_idb()
 		pd[$index]=$desc
 		let "index = $index + 1"
 	    fi
-	fi
+	#fi
     done < $subsysconf	
     $SORT +4u -6 < $idbfile > $metadir/idbtemp
     lines=$(wc -l < $metadir/idbtemp)
