@@ -10,7 +10,7 @@
 topdir=
 version=
 pkgver=
-source[0]=
+source[0]=$topdir-$version.tar.gz
 # If there are no patches, simply comment this
 patch[0]=
 
@@ -18,6 +18,11 @@ patch[0]=
 . ${HOME}/buildpkg/scripts/buildpkg.functions
 
 # Define script functions and register them
+METHODS=""
+reg() {
+    METHODS="$METHODS $1"
+}
+
 reg prep
 prep()
 {
@@ -33,7 +38,7 @@ build()
 reg install
 install()
 {
-    generic_install
+    generic_install DESTDIR
 }
 
 reg pack
@@ -42,14 +47,9 @@ pack()
     generic_pack
 }
 
-
 ###################################################
 # No need to look below here
 ###################################################
-METHODS=""
-reg() {
-    METHODS="$METHODS $1"
-}
 
 reg all
 all()
