@@ -10,6 +10,15 @@ PKGTRANS=/usr/bin/pkgtrans
 
 # Override generic location
 STRIP=/usr/ccs/bin/strip
+# /usr/ccs/bin/strip destroys the symbol table in static archives
+# So this is disabled by default
+dostrip_static=0
+
+# Setup default args for strip. They match SGU 4.0 from Solaris 8
+# Change these if you're using strip from GNU Binutils (recommended)
+strip_elf_args="" # GNU default is -g
+strip_shared_args="" # GNU default is --strip-unneeded
+strip_static_args="" # GNU default is -g
 
 META_CLEAN="prototype prototype.in pkginfo files.tmp"
 
@@ -265,6 +274,7 @@ parse_def()
     local foundfiles=0
     local secname=""
     local secpos=0
+    local legalend=0
 
     while read line
     do
@@ -276,6 +286,7 @@ parse_def()
 		else
 		    section=1
 		    secname="${line:1:((${#line}-2))}"
+		    legalend=0
 		fi
 		;;
 	    '')
@@ -284,6 +295,7 @@ parse_def()
 		else
 		    section=0 # Finished this section
 		    foundfiles=0 #
+		    legalend=1 # We encountered a syntacticly correct section end
 		    # Add scripts if requested
 		    add_scripts $secname
 		fi
@@ -336,13 +348,15 @@ parse_def()
     done < $metadir/pkgdef
     # If there is no blank line at the end of a pkgdef section (if there is only one section that is very
     # likely) then we end up here without having executed the 'section end' actions (case '' above)
-    if [ $section -eq 0 ]; then
-	error $E_BAD_SECTION_END parse_def
-    else
-	section=0 # Finished this section
-	foundfiles=0 #
-	# Add scripts if requested
-	add_scripts $secname
+    if [ $legalend -eq 0 ]; then
+	if [ $section -eq 0 ]; then
+	    error $E_BAD_SECTION_END parse_def
+	else
+	    section=0 # Finished this section
+	    foundfiles=0 #
+	    # Add scripts if requested
+	    add_scripts $secname
+	fi
     fi
 }
 
