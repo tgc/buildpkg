@@ -61,7 +61,7 @@ BASENAME=/bin/basename
 DIRNAME=/bin/dirname
 TR=/bin/tr
 DIFF=/usr/local/bin/diff # *Must* support -u (like GNU Diff)
-FILE=/usr/bin/file # Used by strip()
+FILE=/usr/bin/file # Used by do_strip()
 
 # Groff stuff for manpages
 NEQN=/usr/local/bin/neqn
@@ -96,6 +96,7 @@ _sharedir=share
 _mandir=man
 _infodir=info
 _includedir=include
+_sysconfdir=etc
 
 tmpdir=/tmp
 
@@ -321,42 +322,23 @@ clean()
     esac
 }
 
-# strip(): strip binaries in stagedir
+# do_strip(): strip binaries in stagedir
 # params: none
 # Automatically switches to $stagedir
 # On exit cwd is $stagedir
-strip()
+do_strip()
 {
     local f
     setdir stage
     # Strip ELF binaries (see brp-strip from RPM)
     if [ $dostrip_elf -eq 1 ]; then
-	echo "Stripping ELF binaries..."
-	for f in `$FIND . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec $FILE {} \; | \
-	    $GREP -v ' dynamic lib ' | \
-	    $SED -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
-	    $STRIP $strip_elf_args $f || :
-	done
+	do_strip_bin
     fi
     if [ $dostrip_shared -eq 1 ]; then
-	echo "Stripping ELF shared objects..."
-	# Strip ELF shared objects (see brp-strip-shared from RPM)
-	# Please note we don't restrict our search to executable files because
-	# our libraries are not (should not be, at least) +x.
-	for f in `$FIND . -type f -a -exec $FILE {} \; | \
-	    grep ' dynamic lib ' | \
-	    $SED -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
-	    $STRIP $strip_shared_args $f
-	done
+	do_strip_shared
     fi
     if [ $dostrip_static -eq 1 ]; then
-	echo "Stripping static archives..."
-	# Strip static libraries. (see brp-strip-static-archive from RPM)
-	for f in `$FIND . -type f -a -exec $FILE {} \; | \
-	    $GREP 'current ar archive' | \
-	    $SED -n -e 's/^\(.*\):[	]*current ar archive,.*/\1/p'`; do
-	    $STRIP $strip_static_args $f
-	done
+	do_strip_static
     fi
 }
     
@@ -533,7 +515,7 @@ generic_install()
 	error $E_BAD_MAKE generic_install
     fi
     if [ $dostrip -eq 1 ]; then
-       strip
+       do_strip
     fi
 }
 

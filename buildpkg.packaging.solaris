@@ -411,6 +411,46 @@ get_pkgrev()
     local secver=$(_upls ${pstamp##PSTAMP=})
     echo $secver
 }
+
+# do_strip_bin(): Strip binaries
+# params: none
+do_strip_binaries()
+{
+    echo "Stripping ELF binaries..."
+    for f in `$FIND . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec $FILE {} \; | \
+	$GREP -v ' dynamic lib ' | \
+	$SED -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
+	$STRIP $strip_elf_args $f || :
+    done
+}
+
+# do_strip_shared(): Strip shared libraries
+# params: none
+do_strip_shared()
+{
+    echo "Stripping ELF shared objects..."
+    # Strip ELF shared objects (see brp-strip-shared from RPM)
+    # Please note we don't restrict our search to executable files because
+    # our libraries are not (should not be, at least) +x.
+    for f in `$FIND . -type f -a -exec $FILE {} \; | \
+	grep ' dynamic lib ' | \
+	$SED -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
+	$STRIP $strip_shared_args $f
+    done
+}
+
+# do_strip_static(): Strip static archives
+# params: none
+do_strip_static()
+{
+    echo "Stripping static archives..."
+    # Strip static libraries. (see brp-strip-static-archive from RPM)
+    for f in `$FIND . -type f -a -exec $FILE {} \; | \
+	$GREP 'current ar archive' | \
+	$SED -n -e 's/^\(.*\):[	]*current ar archive,.*/\1/p'`; do
+	$STRIP $strip_static_args $f
+    done
+}
     
 #####################################################
 # Define generic functions for different build stages

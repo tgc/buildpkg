@@ -9,7 +9,6 @@ GENDIST="/usr/sbin/gendist"
 
 GZIP=/usr/people/tgc/bin/gzip
 BZIP2=/usr/local/bin/bzip2
-STRIP=/bin/true
 
 # This is the hostname command we'll want on Irix
 HOSTNAME=/usr/bsd/hostname
@@ -27,11 +26,17 @@ hidefile=$metadir/hide
 catman=1
 
 # strip?
-dostrip=0
+dostrip=1
+
+# Setup default args for strip. They match /usr/bin/strip in Irix 6.2
+# Change these if you're using strip from GNU Binutils (recommended)
+strip_elf_args="" # GNU default is -g
+strip_shared_args="-f" # GNU default is --strip-unneeded
+strip_static_args="" # GNU default is -g
 
 # Other
-usedepend=0 # Don't use depend file even if it's available
-usescripts=0 # Don't add ops even if they're available
+usedepend=1 # Don't use depend file even if it's available
+usescripts=1 # Don't add ops even if they're available
 ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area
 
 # Comment these declarations to get it to run with ksh
@@ -194,22 +199,24 @@ add_files()
 	"
 	for i in $FILES
 	do
-		IFS=$OIFS
-		if [ "$defperm" == "-" ]; then
-			permlist=`$LS -l "$i" | $CUT -d " " -f 1`
-			perm=$(compute_octal $permlist)	
-		fi
-		doop=$(check_ops "$i")
-		fname=$(fix_fname "$i")
-		if [ ! -z "$specattr" ]; then
-		    echo "f $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat} $specattr" >>$idbfile
+	    IFS=$OIFS
+	    if [ "$defperm" == "-" ]; then
+		permlist=`$LS -l "$i" | $CUT -d " " -f 1`
+		perm=$(compute_octal $permlist)	
+	    else
+		perm=$defperm
+	    fi
+	    doop=$(check_ops "$i")
+	    fname=$(fix_fname "$i")
+	    if [ ! -z "$specattr" ]; then
+		echo "f $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat} $specattr" >>$idbfile
+	    else
+		if [ ! -z "$doop" ]; then
+		    echo "f $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat} $doop" >>$idbfile
 		else
-		    if [ ! -z "$doop" ]; then
-			echo "f $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat} $doop" >>$idbfile
-		    else
-			echo "f $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat}" >>$idbfile
-		    fi
+		    echo "f $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat}" >>$idbfile
 		fi
+	    fi
 
 	done
 	IFS=$OIFS
@@ -220,15 +227,17 @@ add_files()
 	"
 	for i in $FILES
 	do
-		IFS=$OIFS
-		if [ "$defperm" == "-" ]; then
-			permlist=`$LS -l "$i" | $CUT -d " " -f 1`
-			perm=`compute_octal $permlist`	
-		fi
-		local temp=`$LS -l "$i"|$CUT -d '>' -f 2`
-		local symval=${temp# }
-		fname=$(fix_fname "$i")
-		echo "l $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat} symval($symval)" >>$idbfile
+	    IFS=$OIFS
+	    if [ "$defperm" == "-" ]; then
+		    permlist=`$LS -l "$i" | $CUT -d " " -f 1`
+		    perm=$(compute_octal $permlist)
+	    else
+		    perm=$defperm
+	    fi
+	    local temp=`$LS -l "$i"|$CUT -d '>' -f 2`
+	    local symval=${temp# }
+	    fname=$(fix_fname "$i")
+	    echo "l $perm $owner $group ${topinstalldir:1}/$fname $i ${pkgname}.${prodcat} symval($symval)" >>$idbfile
 	done
 	IFS=$OIFS
 }
@@ -309,6 +318,46 @@ fetch_ops()
 	    let "opsidx = $opsidx + 1"
 	done < $opsfile
     fi
+}
+
+# do_strip_bin(): Strip binaries
+# params: none
+do_strip_bin()
+{
+    echo "Stripping ELF binaries..."
+    for f in `$FIND . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec $FILE {} \; | \
+	$GREP -v ' dynamic lib ' | \
+	$SED -n -e 's/^\(.*\):[	]*ELF.*\(not stripped\).*/\1/p'`; do
+	$STRIP $strip_elf_args $f || :
+    done
+} 
+
+# do_strip_shared(): Strip shared libraries
+# params: none
+do_strip_shared()
+{
+    echo "Stripping ELF shared objects..."
+    # Strip ELF shared objects (see brp-strip-shared from RPM)
+    # Please note we don't restrict our search to executable files because
+    # our libraries are not (should not be, at least) +x.
+    for f in `$FIND . -type f -a -exec $FILE {} \; | \
+	grep ' dynamic lib ' | \
+	$SED -n -e 's/^\(.*\):[	]*ELF.*\(not stripped\).*/\1/p'`; do
+	$STRIP $strip_shared_args $f
+    done
+}
+
+# do_strip_static(): Strip static archives
+# params: none
+do_strip_static()
+{
+    echo "Stripping static archives..."
+    # Strip static libraries. (see brp-strip-static-archive from RPM)
+    for f in `$FIND . -type f -a -exec $FILE {} \; | \
+	$GREP 'current ar archive' | \
+	$SED -n -e 's/^\(.*\):[	]*current ar archive .*/\1/p'`; do
+	$STRIP $strip_static_args $f
+    done
 }
 
 ##################################
