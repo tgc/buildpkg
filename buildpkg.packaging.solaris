@@ -482,12 +482,20 @@ generic_pack()
 	    [ "$catman" -eq 1 ] && fix_man
 	    [ "$gzman" -eq 1 ] && compress_man
 	fi
+	if [ -d "${stagedir}/${_infodir}" ]; then
+	    setdir ${stagedir}${topinstalldir}${dir_prefix}/${_infodir}
+	    [ "$gzinfo" -eq 1 ] && compress_info
+	fi
 	setdir "$stagedir"
     else
 	if [ -d "${stagedir}${topinstalldir}${dir_prefix}/${_mandir}" ]; then
 	    setdir ${stagedir}${topinstalldir}${dir_prefix}/${_mandir}
 	    [ "$catman" -eq 1 ] && fix_man
 	    [ "$gzman" -eq 1 ] && compress_man
+	fi
+	if [ -d "${stagedir}${topinstalldir}${dir_prefix}/${_infodir}" ]; then
+	    setdir ${stagedir}${topinstalldir}${dir_prefix}/${_infodir}
+	    [ "$gzinfo" -eq 1 ] && compress_info
 	fi
 	setdir "${stagedir}${prefix}"
     fi
