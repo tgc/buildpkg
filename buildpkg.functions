@@ -1,0 +1,145 @@
+#
+# Global config file for buildpkg
+#
+# This file is designed to be sourced by pr. package buildscripts
+# 
+
+# Variables that *must* be overridden pr. package
+# They are used to construct paths and more so they
+# must have sane values
+# topdir= The toplevel dir name under $buildpkgbase
+#	 It is also used pr. default in the pkgname
+#	  and it is also used pr. default as the toplevel name inside the sourcetar ($tarname)
+# version= source version ie. 0.14.2b
+# pkgver= the package revision, an increasing number is recommended but a date could be used instead
+# source[0..x] = source filenames - source[0] *must* be defined and contain a legal filename
+#		pr. default we will look for source[0] relative to $srcfiles
+#		A filename that begin with / will be treated as absolute paths
+#		Note! only source[0] will be automatically unpacked
+# patch[0..x] = patch filenames - patch[0] must be defined but *can* be empty
+#		pr. default we expect these to be listed relative to $srcdir
+#		filenames that begin with / will be treated as absolute paths
+#		All patching will be done from *within* $srcdir/$topdir directory with patch -p1
+
+# Define tool programs
+pkgmk=/usr/bin/pkgmk
+pkgtrans=/usr/bin/pkgtrans
+strip=/usr/ccs/bin/strip
+uname=/usr/bin/uname
+tar=/usr/local/bin/tar # GNU tar please!
+bzip2=/usr/bin/bzip2
+gzip=/usr/bin/gzip
+patch=/usr/local/bin/patch # GNU patch 2.5 or better please!
+
+# Define defaults
+buildpkgbase=${HOME}/buildpkg
+stagedir=$buildpkgbase/$topdir/build
+srcdir=$buildpkgbase/$topdir/src
+metadir=$buildpkgbase/$topdir/meta
+tarname=$topdir-$version
+
+srcfiles=$buildpkgbase/srcfiles
+
+# defaults used for prepping the source
+topinstalldir=/usr/local
+prefix=$topinstalldir
+
+pkgname=SB$topdir
+cpu=sparcv9
+os=sol`$uname -s`
+pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
+
+# Distfiles should be named like this
+# <name>-<version>-<pkgver>-sb-<os>-<cpu>-<pkgdirdesig>
+# ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
+distfile=$topdir-$version-$pkgver.sb-$os-$cpu-$pkgdirdesig
+
+# Define error codes and texts
+E_MISSING_STAGEDIR=30
+E_BAD_SOURCE=31
+E_BAD_FILE=32
+
+error_txt[$E_BAD_FILE]="File not found"
+
+# 
+# Helper functions
+#
+#
+# error(): exit with errorcode and possibly a message
+# params: $1 = errorcode
+error()
+{
+    if [ ! -z $error_txt[$1] ]; then
+	echo "$1: $error_txt[$1]"
+    fi
+    exit $1
+}
+#
+# patch(): patch unpacked source
+# params: $1 = patch number (arrayindex) $2 = patch params (defaults to -p1)
+# It will verify the existence of the patch file passed to it and
+# exit gracefully if it cannot be found.
+patch()
+{
+    cd $srcdir/$tarname
+    if [ ! -z $patch[$1] ]; then
+	if [ ! "${patch[$1]:1:1}" == "/" ]; then # We have a relative pathname
+	    # expand to absolute
+	    $patch[$1]=$srcfiles/$patch[$1]
+	fi # We are now sure that $patch[$1] contains file with absolute path
+	echo "Processing patch[$1] - $patch[$1]"
+	if [ -r $patch[$1] ]; then # file is readable
+	    # unpack
+	else
+	    error $E_BAD_FILE
+	fi
+    fi
+
+}
+
+unpack()
+{
+}
+# Define generic functions for different build stages
+#
+
+# generic_prep(): Unpack source and and apply any patches
+# params: none
+generic_prep()
+{
+    cd $srcdir
+    # unpack source
+    if [ ! "${source[0]:1:1}" == "/" ]; then # We have a relative pathname
+	# expand to absolute
+	$source[0]=$srcfiles/$source[0]
+    fi # We are now sure that $source[0] contains file with absolute path
+    if [ -r $source[0] ]; then # file is readable
+	# unpack
+    else
+	exit $E_BAD_SOURCE
+    fi
+    for i in 
+}
+
+# generic_build(): Take the necessary steps to build already prepared source
+# params: [$1 = topsrcdir] 
+# topsrcdir is the toplevel dir *inside* the sourcepackage
+# It may be necessary to set this if it differs from $topdir-$version
+generic_build()
+{
+}
+
+# generic_install(): Install already built source
+generic_install()
+{
+if [ -z "$stagedir" ]; then
+    exit $E_MISSING_STAGEDIR
+else
+    
+}
+
+# generic_pack(): Build package using files from 'install' stage
+generic_pack()
+{
+}
+
