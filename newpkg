@@ -23,3 +23,4 @@ do
 done
 
 cp scripts/build.sh.generic $arg1/build.sh
+cp scripts/pkginfo.in $arg1/meta
