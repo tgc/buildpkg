@@ -64,10 +64,11 @@ PRINTF=/usr/bin/printf
 LN=/usr/bin/ln
 GINSTALL=/usr/local/bin/install # BSD compatible install - usually GNU install
 COMPRESS=/usr/bsd/compress
+SHA1SUM=/usr/local/bin/sha1sum
 
 # Groff stuff for manpages
 NROFF=/usr/local/bin/nroff
-NROFFOPTS="-c -mandoc -Tlatin1 -t"
+NROFFOPTS="-c -mandoc -Tascii -t"
 
 # Define defaults
 pkgdir=${PWD##*/} # topdir under $BUILDPKG_BASE

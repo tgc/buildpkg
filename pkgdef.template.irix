@@ -20,7 +20,12 @@ $_libdir/*.so.*
 [man]
 subsys=man.man
 files(-,root,sys)
-$_mandir
+$_mandir/?a?[12456789]
+
+[mandev]
+subsys=man.dev
+files(-,root,sys)
+$_mandir/?a?3
 
 [info]
 subsys=man.info
@@ -33,5 +38,4 @@ files(-,root,sys)
 $_includedir
 $_libdir/*.so
 $_libdir/*.a
-$_libdir/*.la
 
