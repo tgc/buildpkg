@@ -93,6 +93,7 @@ _libdir=lib
 _sharedir=share
 _mandir=man
 _infodir=info
+_includedir=include
 
 tmpdir=/tmp
 
