@@ -333,7 +333,7 @@ strip()
     if [ $dostrip_elf -eq 1 ]; then
 	echo "Stripping ELF binaries..."
 	for f in `$FIND . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec $FILE {} \; | \
-	    $GREP -v ' shared object,' | \
+	    $GREP -v ' dynamic lib ' | \
 	    $SED -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
 	    $STRIP $strip_elf_args $f || :
 	done
@@ -344,7 +344,7 @@ strip()
 	# Please note we don't restrict our search to executable files because
 	# our libraries are not (should not be, at least) +x.
 	for f in `$FIND . -type f -a -exec $FILE {} \; | \
-	    grep ' shared object,' | \
+	    grep ' dynamic lib ' | \
 	    $SED -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
 	    $STRIP $strip_shared_args $f
 	done
