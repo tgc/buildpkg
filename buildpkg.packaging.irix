@@ -451,7 +451,7 @@ create_spec()
     fetch_imageconf
     fetch_subsysdesc
     fetch_depends
-    spec_header $pkgname "$name $version-$pkgver" > $specfile
+    spec_header $pkgname "$name $version-${pkgver}${shortdesc}" > $specfile
     local pcsize=${#pc[@]}
     local pctopsize=${#pctop[@]}
     for ((i=0; i < $pctopsize; i++))
@@ -474,15 +474,9 @@ create_spec()
 		    fi
 		done
 		reqidlsize=${#reqidlist[@]}
-		if [ "$reqidlsize" -eq 1 ]; then
-		    id=${reqidlist[1]}
+		if [ "$reqidlsize" -ge 1 ]; then
 		    spec_subsys_req_header >> $specfile
-		    spec_subsys_req "${reqp[$id]}" >> $specfile
-		    spec_subsys_req_footer >> $specfile
-		fi
-		if [ "$reqidlsize" -gt 1 ]; then
-		    spec_subsys_req_header >> $specfile
-		    for ((j=1; j < $reqidlsize; j++))
+		    for ((j=0; j < $reqidlsize; j++))
 		    do
 			id=${reqidlist[$j]}
 			spec_subsys_req "${reqp[$id]}" >> $specfile
@@ -592,6 +586,9 @@ parse_def()
 					let "index = $index + 1"
 				    fi
 				    ;;
+			'shortdesc')
+				    shortdesc=" $(_upls ${line:$equalindex:${#line}})"
+				    ;;
                     esac
                 else # Perhaps we hit 'files'?
                     if [ "${line:0:5}" == "files" ]; then
@@ -642,15 +639,13 @@ check_unpackaged()
 #    $FIND . -type d -print|$SED -e 's/\.\///g'|$GREP -v '^\.' >> $tmpdir/files.tmp
     $SORT $metadir/files.tmp|$UNIQ > $tmpdir/f1
     $SORT $tmpdir/files.tmp > $tmpdir/f2
-    if [ ! "$($CMP $tmpdir/f1 $tmpdir/f2)" == "" ]; then
-        upf="$($CAT $tmpdir/f1 $tmpdir/f2 | $SORT | $UNIQ -u)"
-	if [ ! -z "$upf" ]; then
-	    echo "There are unpackaged files in the stagedir:"
-	    for i in $upf
-	    do
-		echo "${indent4}${i}"
-	    done
-	fi
+    upf="$($CAT $tmpdir/f1 $tmpdir/f2 | $SORT | $UNIQ -u)"
+    if [ ! -z "$upf" ]; then
+	echo "There are unpackaged files in the stagedir:"
+	for i in $upf
+	do
+	    echo "${indent4}${i}"
+	done
         $RM -f $tmpdir/f1 $tmpdir/f2
 	if [ "$ignore_unpackaged_files" -eq 0 ]; then
 	    error $E_UNPACKAGED_FILES check_unpackaged
@@ -659,18 +654,18 @@ check_unpackaged()
     $RM -f $tmpdir/f1 $tmpdir/f2
 }
 
-# auto_src(): Automatically place any patches into the correct location for packaging
+# auto_src(): Automatically place any patches and srcfiles into the stagedir
 # params: none
-# Grabs any patches and shoves them into $prefix/src/$topdir-$version-$pkgver
-# for adding to the opt.src subsystem
+# Grabs the original source and any patches and shoves them into
+# $prefix/src/$topdir-$version-$pkgver for adding to the opt.src subsystem
 auto_src()
 {
-
+    local distsrcdir="src/$topdir-$version-$pkgver"
+    $MKDIR -p $distsrcdir
+    # Add patches
     local numpatch=${#patch[@]}
     local pnum=0
     if [ "$numpatch" -gt 0 ]; then
-	local distsrcdir="src/$topdir-$version-$pkgver"
-	$MKDIR -p $distsrcdir
 	for ((pnum=0; pnum < $numpatch; pnum++))
 	do
 	    if [ ! -z ${patch[$pnum]} ]; then # They didn't give us an empty string
@@ -678,8 +673,8 @@ auto_src()
 		    # expand to absolute
 		    patch[$pnum]=$patchdir/${patch[$pnum]}
 		fi # We are now sure that $patch[$pnum] contains file with absolute path
-		echo "Processing patch[$pnum] - ${patch[$pnum]}"
 		if [ -r ${patch[$pnum]} ]; then # file is readable
+		    echo "Copying patch[$pnum] - ${patch[$pnum]}"
 		    $CP ${patch[$pnum]} $distsrcdir
 		else
 		    error $E_BAD_FILE patch
@@ -689,6 +684,20 @@ auto_src()
 	    fi
 	done
     fi
+    # Add sourcecode
+    local numsource=${#source[@]}
+    local snum=0
+    for ((snum=0; $snum < $numsource; snum++))
+    do
+	if [ "${source[$snum]:0:1}" != "/" ]; then # We have a relative pathname
+	    # expand to absolute
+	    source[$snum]=$srcfiles/${source[$snum]}
+	fi # We are now sure that ${source[$snum]} contains file with absolute path
+	if [ -r ${source[$snum]} ]; then
+	    echo "Copying source[$snum] - ${source[$snum]}"
+	    $CP ${source[$snum]} $distsrcdir
+	fi
+    done
 }
 
 # auto_rel(): Fix up and add releasenotes to stagedir
@@ -701,7 +710,8 @@ auto_rel()
 	local relmetadir=relnotes/$topdir-$version-$pkgver
 	local cf="$(_upls $configure_args)"
 	local fullcf="./configure $cf"
-	local compiler="gcc $(gcc --version 2>&1)"
+	local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
+	local compiler="gcc ${compiler_temp##* }"
 	local pkgnam_temp=$(grep 'pkgname=' $metadir/pkgdef)
 	local pkgnam=$(_upls ${pkgnam_temp#pkgname=*})
 	$MKDIR -p $relmetadir
