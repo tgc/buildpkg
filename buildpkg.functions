@@ -58,6 +58,7 @@ CMP=/bin/cmp
 GREP=/bin/grep
 UNIQ=/bin/uniq
 BASENAME=/bin/basename
+DIRNAME=/bin/dirname
 TR=/bin/tr
 
 # Groff stuff for manpages
@@ -80,6 +81,9 @@ srcfiles=$buildpkgbase/srcfiles
 
 topinstalldir=/usr/local
 prefix=$topinstalldir
+
+# Keep this in hard-quotes to delay expansion
+configure_args='--prefix=$prefix --disable-nls'
 
 # Docdir relative to $prefix
 _docdir=doc
@@ -453,7 +457,7 @@ generic_build()
 {
     setdir source
 
-    ./configure --prefix=$prefix --disable-nls
+    ./configure $(_upls $configure_args)
     if [ $? -ne 0 ]; then
 	error $E_BAD_CONFIG generic_build
     fi
