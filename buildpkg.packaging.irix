@@ -813,6 +813,16 @@ auto_rel()
 	local vendor_temp=$($GREP 'pkgvendor=' $metadir/pkgdef)
 	local vendor=$(_upls ${vendor_temp#pkgvendor=*})
 	local packager="${pkgedby} <${email}>"
+	# A little snip from buildpkg.functions:unpack
+	if [ "${source[0]:0:1}" != "/" ]; then # We have a relative pathname
+	    # expand to absolute
+	    source[0]=$srcfiles/${source[0]}
+	fi # We are now sure that ${source[0]} contains file with absolute path
+	# To avoid recording an absolute path in the sha1sum output that gets inserted
+	# into relnotes we cd first then run sha1sum
+	local path="${source[0]%/*}" # Extract path part
+	local file="${source[0]##*/}" # Extrat filename part
+	local source_sha1sum="`(cd "$path"; $SHA1SUM "$file")`"
 	$MKDIR -p $relmetadir
 	$SED -e "s;%%PKGNAME%%;${pkgnam};g" \
 	    -e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
@@ -820,6 +830,7 @@ auto_rel()
 	    -e "s;%%COMPILER%%;${compiler};g" \
 	    -e "s;%%VENDOR%%;${vendor};g" \
 	    -e "s;%%PKGEDBY%%;${packager};g" \
+	    -e "s;%%SOURCE_SHA1SUM%%;${source_sha1sum};g" \
 		${metadir}/${rn} > "$relmetadir/${topdir}.txt"
     else
 	echo "auto_rel: No release notes found!"
