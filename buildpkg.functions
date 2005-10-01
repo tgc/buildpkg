@@ -84,7 +84,7 @@ topsrcdir=$topdir-$version # it may be necessary to override this
 
 srcfiles=$buildpkgbase/srcfiles
 
-topinstalldir=/usr/local
+topinstalldir=/usr/tgcware
 prefix=$topinstalldir
 metainstalldir=$topinstalldir
 
