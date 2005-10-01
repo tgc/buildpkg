@@ -52,7 +52,18 @@ email="irixpkg@jupiterrise.com"
 
 # ver_width controls the width of the pkgversion numbers created
 # do *not* change this blindly
-ver_width=8
+# inst uses an INT value for the version number which can atmost be
+# 2,147,483,647 that means it's not safe to extend the version number
+# beyond 9 digits. With 10 digits a version starting with 22.xxxx will overflow
+# the INT and crash inst.
+ver_width=9
+# Some versioning causes trouble with the normal version transformation (like 2.8->2.10)
+# which ends up as 210 (2.10) < 280 (2.8) which is wrong
+# This control will turn on zero prefixing of single digit version components in a version string
+# so that 0210 (2.10) > 0208 (2.8).
+# The default is on but be aware that it can also give problems with version transformation (like 2.08->2.1)
+# which ends up as 0208 (2.08) > 0201 (2.1).
+useextendedver=1
 
 # Comment these declarations to get it to run with ksh
 declare -a pc # Array of product categories (image.subsys)
@@ -98,9 +109,33 @@ indent24="                       "
 # to the far right and padding with zeroes inbetween.
 fix_ver()
 {
+    local numpad
+    local extendedwidth
+    local extendedver=""
+    local i
     local version=$1
     local rev=${version##*-}
-    local ver=$(echo ${version%%-*} | $SED -e 's/\.//g' -e 's/-//g' -e 's/[a-zA-Z]//g')
+    local ver=$(echo ${version%%-*} | $SED -e 's/-//g' -e 's/[a-zA-Z]//g')
+    if [ $useextendedver -eq 1 ]; then
+      ### experimental
+      ### zero prefixes all single digits in a versionstring
+      OIFS=$IFS
+      IFS=".
+      "
+      for i in $ver
+      do
+	if [ ${#i} -eq 1 ]; then
+	  extendedver=${extendedver}0${i}
+	else
+	  extendedver=${extendedver}${i}
+	fi
+      done
+      ver=$extendedver
+    fi
+    if [ $useextendedver -eq 0 ]; then
+      # Remove the dots
+      ver=$(echo $ver | $SED -e 's/\.//g')
+    fi
     let "numpad = $ver_width - ${#ver} - ${#rev}"
     [ $numpad -lt 0 ] && error $E_BAD_VERSION fix_ver
     while [ $numpad -gt 0 ]
@@ -910,3 +945,6 @@ generic_pack()
     check_unpackaged
     make_dist
 }
+
+
+# vim: set filetype=sh : #
