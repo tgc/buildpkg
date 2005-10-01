@@ -482,13 +482,13 @@ create_idb()
 
     $SORT +4u -6 < $idbfile > $metadir/idbtemp
     lines=$(wc -l < $metadir/idbtemp)
-    if [ ! -z $firstop ]; then
+    if [ ! -z "$firstop" ]; then
 	echo "$(head -1 $metadir/idbtemp) $firstop" > $metadir/idbtemp2
 	tail +2 $metadir/idbtemp >> $metadir/idbtemp2
     else
 	mv $metadir/idbtemp $metadir/idbtemp2
     fi
-    if [ ! -z $lastop ]; then
+    if [ ! -z "$lastop" ]; then
 	let "lines=$lines - 1"
 	echo "$(head -$lines $metadir/idbtemp2)" > $idbfile
 	echo "$(tail -1 $metadir/idbtemp2) $lastop" >> $idbfile
@@ -823,6 +823,13 @@ auto_rel()
 	local path="${source[0]%/*}" # Extract path part
 	local file="${source[0]##*/}" # Extrat filename part
 	local source_sha1sum="`(cd "$path"; $SHA1SUM "$file")`"
+	# FIXME: expensive use of perl
+	local temp_extracted_env="$($SED -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh > /tmp/env.sh; bash /tmp/env.sh|grep ^ENV|$SED -e 's/ENV //g'|perl -i -pe 's/\n/\\\n/' && $RM -f /tmp/env.sh)"
+	# Remove trailing \
+	local extracted_env="${temp_extracted_env%\\*}"
+	# FIXME: expensive use of perl
+	local temp_deps="$(cat ${metadir}/depends | $GREP $pkgprefix | $SED -e "s/.*${pkgprefix}//" | $CUT -d. -f1 | perl -i -pe 's/\n/\\\n/')"
+	local deps="${temp_deps%\\*}"
 	$MKDIR -p $relmetadir
 	$SED -e "s;%%PKGNAME%%;${pkgnam};g" \
 	    -e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
@@ -831,6 +838,8 @@ auto_rel()
 	    -e "s;%%VENDOR%%;${vendor};g" \
 	    -e "s;%%PKGEDBY%%;${packager};g" \
 	    -e "s;%%SOURCE_SHA1SUM%%;${source_sha1sum};g" \
+	    -e "s;%%ENVIRONMENT%%;${extracted_env};g" \
+	    -e "s;%%DEPENDENCIES%%;${deps};g" \
 		${metadir}/${rn} > "$relmetadir/${topdir}.txt"
     else
 	echo "auto_rel: No release notes found!"
