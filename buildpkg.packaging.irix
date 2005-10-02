@@ -87,7 +87,7 @@ cpu=mips3
 
 configure_args='--prefix=$prefix'
 
-META_CLEAN="$topdir.spec $topdir.idb files.tmp"
+META_CLEAN="$topdir.spec $topdir.idb files.tmp ${depends##*/}_auto ${depends##*/}_all"
 
 # Host specific configuration
 [ -r $buildpkgbase/scripts/config.$($HOSTNAME -s).irix ] && . $buildpkgbase/scripts/config.$($HOSTNAME -s).irix
@@ -399,7 +399,9 @@ fetch_subsysdesc()
 #
 fetch_depends()
 {
-    if [ -r $depends ]; then
+    [ -r ${depends} ] && $CAT ${depends} > ${depends}_all
+    [ -r ${depends}_auto ] && $CAT ${depends}_auto >> ${depends}_all
+    if [ -r ${depends}_all ]; then
 	reqidx=0
 	while read ss reqpkg reqvers
 	do
@@ -412,7 +414,7 @@ fetch_depends()
 	    fi
 	    reqp[$reqidx]=$req
 	    let "reqidx = $reqidx + 1"
-	done < $depends
+	done < ${depends}_all
     fi
 }
 
@@ -501,6 +503,20 @@ create_idb()
 	add_files "${metaprefix}src" opt.src - root sys ""
 	pc[$pcpos]="opt.src"
 	let "pcpos = pcpos + 1"
+    fi
+    # HACK: relnotes cannot be updated before auto_deps has run
+    # but auto_deps needs the idb file.
+    # We'll create an empty placeholder so satisfy the code below that
+    # checks for releasenotes and updates the idb file.
+    # This snippet was taken from auto_rel and should be kept in sync
+    for i in relnotes relnotes.${_os} relnotes.txt relnotes.${_os}.txt;
+    do
+	[ -r ${metadir}/${i} ] && rn=$i
+    done
+    if [ -r ${metadir}/${rn} ]; then
+	local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
+	$MKDIR -p $relmetadir
+	echo "" > ${relmetadir}/${topdir}.txt
     fi
     if [ -d "${stagedir}${metainstalldir}relnotes" ]; then # We have releasenotes, add them to idb file
 	add_files "${metaprefix}relnotes" opt.relnotes - root sys ""
@@ -859,11 +875,15 @@ auto_rel()
 	local file="${source[0]##*/}" # Extrat filename part
 	local source_sha1sum="`(cd "$path"; $SHA1SUM "$file")`"
 	# FIXME: expensive use of perl
-	local temp_extracted_env="$($SED -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh > /tmp/env.sh; bash /tmp/env.sh|grep ^ENV|$SED -e 's/ENV //g'|perl -i -pe 's/\n/\\\n/' && $RM -f /tmp/env.sh)"
+	local temp_extracted_env="$($SED -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh > /tmp/env.sh; bash /tmp/env.sh|$GREP ^ENV|$SED -e 's/ENV //g'|$PERL -i -pe 's/\n/\\\n/' && $RM -f /tmp/env.sh)"
 	# Remove trailing \
 	local extracted_env="${temp_extracted_env%\\*}"
 	# FIXME: expensive use of perl
-	local temp_deps="$(cat ${metadir}/depends | $GREP $pkgprefix | $SED -e "s/.*${pkgprefix}//" | $CUT -d. -f1 | perl -i -pe 's/\n/\\\n/')"
+	if [ -r ${depends}_all ]; then
+	    local temp_deps="$($CAT ${depends}_all | $GREP $pkgprefix | $SED -e "s/.*${pkgprefix}//" | $CUT -d. -f1 | $PERL -i -pe 's/\n/\\\n/')"
+	else
+	    local temp_deps=""
+	fi
 	local deps="${temp_deps%\\*}"
 	$MKDIR -p $relmetadir
 	$SED -e "s;%%PKGNAME%%;${pkgnam};g" \
@@ -891,6 +911,73 @@ auto_dist()
     $MKDIR -p $distmetadir
     $CP $idbfile $distmetadir
     $CP $specfile $distmetadir
+}
+
+# extract_deps: Given a subsystem it will extract the dependencies
+# params: $1 = subsystem name (like tgc_xxx.sw.lib)
+# It goes through the idb file and finds all the files
+# associated with a given subsystem. It will then compute
+# the dependencies and return the package names for the dependencies.
+extract_deps()
+{
+    # Can't use setdir since it has output
+    cd ${stagedir}${topinstalldir}
+
+    # Grab the filelist and classify files
+    local filelist=$($GREP $1 $idbfile | $AWK '{ print $6 }')
+    local exelist=$(echo $filelist | $XARGS $FILE | $EGREP -v ":.* (commands|script) " | $GREP ":.*executable" | $CUT -d: -f1)
+    local scriptlist=$(echo $filelist | $XARGS $FILE | $EGREP ":.* (commands|script) " | $CUT -d: -f1)
+    local liblist=$(echo $filelist | $XARGS $FILE | $GREP ":.*dynamic lib" | $CUT -d: -f1)
+
+    # Compute dependencies for executables
+    if [ -n "$exelist" ]; then
+	for f in $exelist; do
+	    [ -r $f -a -x $f ] || continue
+	    $LDD $f | $GREP \= | $AWK -F'	' '{ print $3 }'  | $CUT -d\  -f2
+	done | $SORT -u | $XARGS $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
+    fi
+    # Compute dependencies for dynamic libraries
+    if [ -n "$liblist" ]; then
+	for f in $liblist; do
+	    [ -r $f -a -x $f ] || continue
+	    $LDD $f | $GREP \= | $AWK -F'	' '{ print $3 }'  | $CUT -d\  -f2
+	done | $SORT -u | $XARGS $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
+    fi
+    # Compute dependencies for scripts
+    if [ -n "$scriptlist" ]; then
+	for f in $scriptlist; do
+	    [ -r $f -a -x $f ] || continue
+	    interp=$HEAD -n 1 $f | $CUT -d\! -f2-
+	    if [ -L $interp ]; then
+		echo $($FILE -h $interp | $SED -e 's/.* to //')
+	    else
+		echo $interp
+	    fi
+	done | $SORT -u | $XARGS $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
+    fi
+}
+
+# auto_deps(): Compute dependencies
+# params: none
+# This will go through the idb file and identify the subsystems.
+# It will then call extract_deps() to get the packagenames of the
+# dependencies. The dependencies will be added to $metadir/depends_auto.
+auto_deps()
+{
+    local i
+    local j
+    local deps
+    local subsystems
+
+    subsystems="$($AWK '{ print $7 }' < $idbfile | $SORT -u | $GREP sw)"
+    for i in $subsystems
+    do
+	deps="$(extract_deps $i)"
+	for j in $deps
+	do
+	    echo "${i#*.} $j $($SHOWPRODS -n $j | $GREP $j | $AWK '{ print $3 }') maxint"
+	done
+    done | $SORT -u > ${depends}_auto
 }
 
 # generic_pack(): Build package using files from 'install' stage
@@ -938,9 +1025,10 @@ generic_pack()
     [ ! "$metainstalldir" == "/" ] && metainstalldir="${metainstalldir}/"
 
     auto_src # Add any patches
-    auto_rel # Fix up and add releasenotes
     create_idb
+    auto_deps
     create_spec
+    auto_rel # Fix up and add releasenotes
     auto_dist # Add idb & specfiles to stagedir
     check_unpackaged
     make_dist
@@ -948,3 +1036,5 @@ generic_pack()
 
 
 # vim: set filetype=sh : #
+# vim: set sts=4 : #
+# vim: set shiftwidth=4 : #
