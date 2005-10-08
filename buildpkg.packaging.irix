@@ -995,7 +995,7 @@ auto_deps()
     subsystems="$($AWK '{ print $7 }' < $idbfile | $SORT -u | $GREP sw)"
     for i in $subsystems
     do
-	deps="$(extract_deps $i | $GREP -v patchSG)"
+	deps="$(extract_deps $i)"
 	for j in $deps
 	do
 	    echo "${i#*.} $j $($SHOWPRODS -n $j | $GREP $j | $AWK '{ print $3 }') maxint"
