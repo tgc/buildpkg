@@ -399,21 +399,38 @@ fetch_subsysdesc()
 #
 fetch_depends()
 {
+    local reqidx=0
+    local havedep=0
     [ -r ${depends} ] && $CAT ${depends} > ${depends}_all
     [ -r ${depends}_auto ] && $CAT ${depends}_auto >> ${depends}_all
     if [ -r ${depends}_all ]; then
-	reqidx=0
 	while read ss reqpkg reqvers
 	do
-	    reqs[$reqidx]=$ss
+	    havedep=0
 	    if [ "$reqvers" == "auto" ]; then # auto create depend on $reqpkg (assumed internal)
 		nver=$(fix_ver "$version-$pkgver")
 		req="$pkgname.$reqpkg $nver $nver"
+		havedep=1
 	    else
-		req="$reqpkg $reqvers"
+		# When rebuilding a package we want to avoid the autodeps
+		# from adding deps on the already installed parts.
+		# Internal deps must be handled in depends with the auto keyword
+		# or chaos will ensue.
+		# We will try to check if the package name in the autodep matches the 
+		# package we're building
+		if [ ! "${reqpkg%%.*}" == "$pkgname" ]; then 
+		    req="$reqpkg $reqvers"
+		    havedep=1
+		else
+		    echo "skipping depend: $ss $reqpkg $reqvers"
+		fi
 	    fi
-	    reqp[$reqidx]=$req
-	    let "reqidx = $reqidx + 1"
+	    # Only increment and update arrays if we actually add the dep
+	    if [ $havedep -gt 0 ]; then
+		reqs[$reqidx]=$ss
+		reqp[$reqidx]=$req
+		let "reqidx = $reqidx + 1"
+	    fi
 	done < ${depends}_all
     fi
 }
@@ -880,7 +897,7 @@ auto_rel()
 	local extracted_env="${temp_extracted_env%\\*}"
 	# FIXME: expensive use of perl
 	if [ -r ${depends}_all ]; then
-	    local temp_deps="$($CAT ${depends}_all | $GREP $pkgprefix | $SED -e "s/.*${pkgprefix}//" | $CUT -d. -f1 | $PERL -i -pe 's/\n/\\\n/')"
+	    local temp_deps="$($CAT ${depends}_all | $GREP $pkgprefix | $SED -e "s/.*${pkgprefix}//" | $CUT -d. -f1 | $PERL -i -pe 's/\n/\\\n/' | $SORT -u)"
 	else
 	    local temp_deps=""
 	fi
@@ -933,27 +950,33 @@ extract_deps()
     if [ -n "$exelist" ]; then
 	for f in $exelist; do
 	    [ -r $f -a -x $f ] || continue
-	    $LDD $f | $GREP \= | $AWK -F'	' '{ print $3 }'  | $CUT -d\  -f2
-	done | $SORT -u | $XARGS $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
+	    # Generic Irix ldd
+	    # $LDD $f | $GREP \= | $AWK -F'	' '{ print $3 }'  | $CUT -d\  -f2
+	    # Ariel Faigons perl5 ldd
+	    $LDD $f | $GREP \= | $GREP -v 'not found' | $SED -e 's/.*=> //g'
+	done | $SORT -u | $XARGS -r $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
     fi
     # Compute dependencies for dynamic libraries
     if [ -n "$liblist" ]; then
 	for f in $liblist; do
-	    [ -r $f -a -x $f ] || continue
-	    $LDD $f | $GREP \= | $AWK -F'	' '{ print $3 }'  | $CUT -d\  -f2
-	done | $SORT -u | $XARGS $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
+	    [ -r $f ] || continue
+	    # Generic Irix ldd
+	    #$LDD $f | $GREP \= | $AWK -F'	' '{ print $3 }'  | $CUT -d\  -f2
+	    # Ariel Faigon's perl5 ldd
+	    $LDD $f | $GREP \= | $GREP -v 'not found' | $SED -e 's/.*=> //g'
+	done | $SORT -u | $XARGS -r $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
     fi
     # Compute dependencies for scripts
     if [ -n "$scriptlist" ]; then
 	for f in $scriptlist; do
 	    [ -r $f -a -x $f ] || continue
-	    interp=$HEAD -n 1 $f | $CUT -d\! -f2-
-	    if [ -L $interp ]; then
-		echo $($FILE -h $interp | $SED -e 's/.* to //')
+	    interp="$($HEAD -n 1 $f | $CUT -d\! -f2-)"
+	    if [ -L "$interp" ]; then
+		echo $($FILE -h "$interp" | $SED -e 's/.* to //')
 	    else
 		echo $interp
 	    fi
-	done | $SORT -u | $XARGS $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
+	done | $SORT -u | $XARGS -r $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
     fi
 }
 
@@ -972,7 +995,7 @@ auto_deps()
     subsystems="$($AWK '{ print $7 }' < $idbfile | $SORT -u | $GREP sw)"
     for i in $subsystems
     do
-	deps="$(extract_deps $i)"
+	deps="$(extract_deps $i | $GREP -v patchSG)"
 	for j in $deps
 	do
 	    echo "${i#*.} $j $($SHOWPRODS -n $j | $GREP $j | $AWK '{ print $3 }') maxint"
