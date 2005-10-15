@@ -7,6 +7,8 @@
 # generic tools go in buildpkg.functions
 GENDIST="/usr/sbin/gendist"
 GENDIST_OPTS="-nostrip"
+SHOWPRODS="/usr/bin/showprods"
+SHOWFILES="/usr/bin/showfiles"
 
 GZIP=/usr/people/tgc/bin/gzip
 BZIP2=/usr/local/bin/bzip2
@@ -64,6 +66,14 @@ ver_width=9
 # The default is on but be aware that it can also give problems with version transformation (like 2.08->2.1)
 # which ends up as 0208 (2.08) > 0201 (2.1).
 useextendedver=1
+
+# Use run_configure
+generic_configure=0
+# Check config.log for nono libs
+check_ac=1
+# If you need to override any autoconf values put them in this string
+# ie. ac_cv_lib_sun_mntent=no etc.
+ac_overrides=""
 
 # Comment these declarations to get it to run with ksh
 declare -a pc # Array of product categories (image.subsys)
@@ -872,8 +882,14 @@ auto_rel()
     done
     if [ -r ${metadir}/${rn} ]; then
 	local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
+	# compute configure info for relnotes
 	local cf="$(_upls $configure_args)"
-	local fullcf="./configure $cf"
+	[ -n "$ac_overrides" ] && local aco="$(echo $ac_overrides | $TR ' ' '\n' | $AWK '{ printf "%s \\\\ \\n",$0 }')"
+	local temp_fullcf="$(echo "./configure $cf" | $AWK '{ printf "%s\\n",$0 }')"
+	temp_fullcf="$(echo "${aco}${temp_fullcf}")"
+	# Remove trailing whitespace and \n
+	local fullcf="${temp_fullcf%\\*}"
+	# end
 	local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
 	local compiler="gcc ${compiler_temp##* }"
 	local pkgnam_temp=$($GREP 'pkgname=' $metadir/pkgdef)
@@ -889,15 +905,13 @@ auto_rel()
 	# To avoid recording an absolute path in the sha1sum output that gets inserted
 	# into relnotes we cd first then run sha1sum
 	local path="${source[0]%/*}" # Extract path part
-	local file="${source[0]##*/}" # Extrat filename part
+	local file="${source[0]##*/}" # Extract filename part
 	local source_sha1sum="`(cd "$path"; $SHA1SUM "$file")`"
-	# FIXME: expensive use of perl
-	local temp_extracted_env="$($SED -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh > /tmp/env.sh; bash /tmp/env.sh|$GREP ^ENV|$SED -e 's/ENV //g'|$PERL -i -pe 's/\n/\\\n/' && $RM -f /tmp/env.sh)"
-	# Remove trailing \
+	local temp_extracted_env="$($SED -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|$GREP ^ENV|$SED -e 's/ENV //g'|$AWK '{ printf "%s\\n",$0 }' && $RM -f /tmp/env.sh)"
+	# Remove trailing \n
 	local extracted_env="${temp_extracted_env%\\*}"
-	# FIXME: expensive use of perl
 	if [ -r ${depends}_all ]; then
-	    local temp_deps="$($CAT ${depends}_all | $GREP $pkgprefix | $SED -e "s/.*${pkgprefix}//" | $CUT -d. -f1 | $PERL -i -pe 's/\n/\\\n/' | $SORT -u)"
+	    local temp_deps="$($CAT ${depends}_all | $GREP $pkgprefix | $SED -e "s/.*${pkgprefix}//" | $CUT -d. -f1 | $SORT -u | $AWK '{ printf "%s\\n",$0 }')"
 	else
 	    local temp_deps=""
 	fi
@@ -1001,6 +1015,27 @@ auto_deps()
 	    echo "${i#*.} $j $($SHOWPRODS -n $j | $GREP $j | $AWK '{ print $3 }') maxint"
 	done
     done | $SORT -u > ${depends}_auto
+}
+
+# run_configure(): Do the configure part of the build stage
+# params: none
+#
+run_configure()
+{
+    #eval "$ac_overrides ./configure $(_upls $configure_args)"
+    local acvar
+    for acvar in $ac_overrides
+    do
+	export $acvar
+    done
+    ./configure $(_upls $configure_args)
+    if [ $check_ac -gt 0 ]; then
+	local out="$(check_ac warn)"
+	if [ -n "$out" ]; then
+	    echo $out 
+	    error $E_BAD_LIBS run_configure
+	fi
+    fi
 }
 
 # generic_pack(): Build package using files from 'install' stage
