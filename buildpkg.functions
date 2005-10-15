@@ -134,6 +134,11 @@ autonuke=1 # Automatically attempt to cleanout unwanted files after make install
 # to skip the clean stage & make install parts of generic_install
 custom_install=0
 
+# We need to allow a pr. packaging function library to have it's own
+# way of running configure. We default to using the generic version
+# but if set to 0 it will try to use run_configure function instead
+generic_configure=1
+
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
 # ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
@@ -159,6 +164,7 @@ E_BAD_SECTION_BEGIN=43
 E_BAD_SECTION_END=44
 E_UNPACKAGED_FILES=45
 E_BAD_VERSION=46
+E_BAD_LIBS=47
 
 error_txt[$E_BAD_FILE]="File not found"
 error_txt[$E_PATCH_FAILED]="Patch failed"
@@ -174,6 +180,7 @@ error_txt[$E_BAD_SECTION_BEGIN]="Section start marker found but we are already i
 error_txt[$E_BAD_SECTION_END]="Found end of section marker before section begin!"
 error_txt[$E_UNPACKAGED_FILES]="Unpackaged files found in stage area!"
 error_txt[$E_BAD_VERSION]="Version field overflow"
+error_txt[$E_BAD_LIBS]="config.log defines obsolete libraries!"
 
 ##################################################### 
 # Helper functions
@@ -514,8 +521,8 @@ doc()
 # Caveats: It won't pickup sticky bit and mandatory locking bit
 compute_octal()
 {
-	perm=$1
-	v=0; d1=0; d2=0; d3=0; d4=0
+	local perm=$1
+	local v=0; local d1=0; local d2=0; local d3=0; local d4=0
 	# User part
 	if [ "${perm:1:1}" == "r" ]; then
 		let "v = v + 4" # set read bit
@@ -596,7 +603,12 @@ generic_build()
 {
     setdir ${srcdir}/${topsrcdir}/$1
 
-    ./configure $(_upls $configure_args)
+    if [ $generic_configure -eq 1 ]; then
+	./configure $(_upls $configure_args)
+    else
+	# Platform specific configure run
+	run_configure
+    fi
     if [ $? -ne 0 ]; then
 	error $E_BAD_CONFIG generic_build
     fi
