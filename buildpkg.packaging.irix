@@ -7,8 +7,8 @@
 # generic tools go in buildpkg.functions
 GENDIST="/usr/sbin/gendist"
 GENDIST_OPTS="-nostrip"
-SHOWPRODS="/usr/bin/showprods"
-SHOWFILES="/usr/bin/showfiles"
+SHOWPRODS="/usr/sbin/showprods"
+SHOWFILES="/usr/sbin/showfiles"
 
 GZIP=/usr/people/tgc/bin/gzip
 BZIP2=/usr/local/bin/bzip2
@@ -74,6 +74,8 @@ check_ac=1
 # If you need to override any autoconf values put them in this string
 # ie. ac_cv_lib_sun_mntent=no etc.
 ac_overrides=""
+# Run this command for the configure stage
+__configure="./configure"
 
 # Comment these declarations to get it to run with ksh
 declare -a pc # Array of product categories (image.subsys)
@@ -844,14 +846,23 @@ auto_src()
 # time of expansion.
 rel_conf_sub()
 {
+    local rn
+    local i
     for i in relnotes relnotes.${_os}
     do      
 	[ -r ${metadir}/${i} ] && rn=$i
     done            
-    cf="$(_upls $configure_args)"
-    full_cf="./configure $cf"
+    # Duplicated code from auto_rel :(
+    # compute configure info for relnotes
+    local cf="$(_upls $configure_args)"
+    [ -n "$ac_overrides" ] && local aco="$(echo $ac_overrides | $TR ' ' '\n' | $AWK '{ printf "%s \\\\ \\n",$0 }')"
+    local temp_fullcf="$(echo "$__configure $cf" | $AWK '{ printf "%s\\n",$0 }')"
+    temp_fullcf="$(echo "${aco}${temp_fullcf}")"
+    # Remove trailing whitespace and \n
+    local fullcf="${temp_fullcf%\\*}"
+    # end
     if [ -r ${metadir}/${rn} ]; then
-	$SED -e "s;%%CONFIGURE%%;$full_cf;g" \
+	$SED -e "s;%%CONFIGURE%%;$fullcf;g" \
 	    ${metadir}/${rn} > ${metadir}/${rn}.txt
     fi
 }
@@ -885,13 +896,17 @@ auto_rel()
 	# compute configure info for relnotes
 	local cf="$(_upls $configure_args)"
 	[ -n "$ac_overrides" ] && local aco="$(echo $ac_overrides | $TR ' ' '\n' | $AWK '{ printf "%s \\\\ \\n",$0 }')"
-	local temp_fullcf="$(echo "./configure $cf" | $AWK '{ printf "%s\\n",$0 }')"
+	local temp_fullcf="$(echo "$__configure $cf" | $AWK '{ printf "%s\\n",$0 }')"
 	temp_fullcf="$(echo "${aco}${temp_fullcf}")"
 	# Remove trailing whitespace and \n
 	local fullcf="${temp_fullcf%\\*}"
 	# end
-	local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
-	local compiler="gcc ${compiler_temp##* }"
+	if [ "$mipspro" -gt 0 ]; then
+	    local compiler="$(cc -version)"
+	else
+	    local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
+	    local compiler="gcc ${compiler_temp##* }"
+	fi
 	local pkgnam_temp=$($GREP 'pkgname=' $metadir/pkgdef)
 	local pkgnam=$(_upls ${pkgnam_temp#pkgname=*})
 	local vendor_temp=$($GREP 'pkgvendor=' $metadir/pkgdef)
@@ -1028,7 +1043,7 @@ run_configure()
     do
 	export $acvar
     done
-    ./configure $(_upls $configure_args)
+    $__configure $(_upls $configure_args)
     if [ $check_ac -gt 0 ]; then
 	local out="$(check_ac warn)"
 	if [ -n "$out" ]; then
