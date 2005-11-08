@@ -71,11 +71,19 @@ useextendedver=1
 generic_configure=0
 # Check config.log for nono libs
 check_ac=1
+configlog=config.log # override as necessary
 # If you need to override any autoconf values put them in this string
 # ie. ac_cv_lib_sun_mntent=no etc.
 ac_overrides=""
 # Run this command for the configure stage
 __configure="./configure"
+
+# When using autodeps sometimes we get undesired dependencies
+# add them to this var to have them filtered out
+ignore_deps=""
+
+# If using mipspro please set this to 1
+mipspro=0
 
 # Comment these declarations to get it to run with ksh
 declare -a pc # Array of product categories (image.subsys)
@@ -415,14 +423,39 @@ fetch_depends()
     local havedep=0
     [ -r ${depends} ] && $CAT ${depends} > ${depends}_all
     [ -r ${depends}_auto ] && $CAT ${depends}_auto >> ${depends}_all
+    # Are there any deps we should ignore?
+    if [ -n "$ignore_deps" ]; then
+	local j
+	local cmd
+	for j in $ignore_deps
+	do
+	    cmd="$(echo $j | $SED -e 's;\.;\\\.;g')"
+	    $GSED -i "/$j/d" ${depends}_all
+	done
+    fi
     if [ -r ${depends}_all ]; then
 	while read ss reqpkg reqvers
 	do
 	    havedep=0
-	    if [ "$reqvers" == "auto" ]; then # auto create depend on $reqpkg (assumed internal)
-		nver=$(fix_ver "$version-$pkgver")
-		req="$pkgname.$reqpkg $nver $nver"
-		havedep=1
+	    if [ "$reqvers" == "auto" ]; then # auto create depend on $reqpkg
+		# Check if it's an internal depend
+		# There's no real safe way to check but we will assume
+		# That if there's only a single . in the $reqpkg then it's internal
+		local deplen=$((${#reqpkg}-1)) # String length -1 (a single dot)
+		# Now if $deplen is longer than the same string with all dots removed
+		# then we know there was more than one dot and we can assume it's
+		# not an internal depend
+		if [ $deplen -gt "$(/bin/echo -n "$reqpkg" | $TR -d '.' | wc -c)" ]; then
+		    # External depend
+		    # Grab version
+		    nver="$($SHOWPRODS -n $reqpkg | $GREP $reqpkg | $AWK '{ print $3 }')"
+		    req="$reqpkg $nver maxint"
+		    havedep=1
+		else
+		    nver=$(fix_ver "$version-$pkgver")
+		    req="$pkgname.$reqpkg $nver $nver"
+		    havedep=1
+		fi
 	    else
 		# When rebuilding a package we want to avoid the autodeps
 		# from adding deps on the already installed parts.
@@ -902,7 +935,7 @@ auto_rel()
 	local fullcf="${temp_fullcf%\\*}"
 	# end
 	if [ "$mipspro" -gt 0 ]; then
-	    local compiler="$(cc -version)"
+	    local compiler="$(cc -version 2>&1)"
 	else
 	    local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
 	    local compiler="gcc ${compiler_temp##* }"
@@ -999,7 +1032,7 @@ extract_deps()
     if [ -n "$scriptlist" ]; then
 	for f in $scriptlist; do
 	    [ -r $f -a -x $f ] || continue
-	    interp="$($HEAD -n 1 $f | $CUT -d\! -f2-)"
+	    interp="$($HEAD -n 1 $f | $CUT -d\! -f2- | $SED -e 's/ -.*//')"
 	    if [ -L "$interp" ]; then
 		echo $($FILE -h "$interp" | $SED -e 's/.* to //')
 	    else
@@ -1045,7 +1078,7 @@ run_configure()
     done
     $__configure $(_upls $configure_args)
     if [ $check_ac -gt 0 ]; then
-	local out="$(check_ac warn)"
+	local out="$(check_ac warn $configlog)"
 	if [ -n "$out" ]; then
 	    echo $out 
 	    error $E_BAD_LIBS run_configure
