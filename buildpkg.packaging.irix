@@ -959,7 +959,7 @@ auto_rel()
 	# Remove trailing \n
 	local extracted_env="${temp_extracted_env%\\*}"
 	if [ -r ${depends}_all ]; then
-	    local temp_deps="$($CAT ${depends}_all | $GREP $pkgprefix | $SED -e "s/.*${pkgprefix}//" | $CUT -d. -f1 | $SORT -u | $AWK '{ printf "%s\\n",$0 }')"
+	    local temp_deps="$($CAT ${depends}_all | $GREP -v $pkgnam | $GREP $pkgprefix | $SED -e "s/.*${pkgprefix}//" | $CUT -d. -f1 | $SORT -u | $AWK '{ printf "%s\\n",$0 }')"
 	else
 	    local temp_deps=""
 	fi
