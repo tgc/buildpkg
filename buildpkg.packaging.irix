@@ -107,7 +107,7 @@ cpu=mips3
 
 configure_args='--prefix=$prefix'
 
-META_CLEAN="$topdir.spec $topdir.idb files.tmp ${depends##*/}_auto ${depends##*/}_all"
+META_CLEAN="$topdir.spec $topdir.idb files.tmp ${depends##*/}_auto ${depends##*/}_all sums"
 
 # Host specific configuration
 [ -r $buildpkgbase/scripts/config.$($HOSTNAME -s).irix ] && . $buildpkgbase/scripts/config.$($HOSTNAME -s).irix
@@ -430,7 +430,7 @@ fetch_depends()
 	for j in $ignore_deps
 	do
 	    cmd="$(echo $j | $SED -e 's;\.;\\\.;g')"
-	    $GSED -i "/$j/d" ${depends}_all
+	    $GSED -i "/$cmd/d" ${depends}_all
 	done
     fi
     if [ -r ${depends}_all ]; then
@@ -625,6 +625,7 @@ create_spec()
     spec_header $pkgname "$name $version-${pkgver}${shortdesc}" > $specfile
     local pcsize=${#pc[@]}
     local pctopsize=${#pctop[@]}
+    local reqidlist
     for ((i=0; i < $pctopsize; i++))
     do
 	local pcidx=0
@@ -635,7 +636,7 @@ create_spec()
 	    if [ ! "$rv" -eq 0 ]; then # We got a hit!
 		spec_subsys_header ${pctop[$i]} `echo ${pc[$pcidx]}|$CUT -d . -f 2` "${pd[$pcidx]}" "${ps[$pcidx]}" >> $specfile
 		reqsize=${#reqs[@]}
-		declare -a reqidlist
+		unset reqidlist # Zero the array
 		reqidlidx=0
 		for ((j=0; j < $reqsize; j++))
 		do
@@ -644,7 +645,7 @@ create_spec()
 			let "reqidlidx=$reqidlidx + 1"
 		    fi
 		done
-		reqidlsize=${#reqidlist[@]}
+		reqidlsize=$reqidlidx
 		if [ "$reqidlsize" -ge 1 ]; then
 		    spec_subsys_req_header >> $specfile
 		    for ((j=0; j < $reqidlsize; j++))
@@ -945,16 +946,29 @@ auto_rel()
 	local vendor_temp=$($GREP 'pkgvendor=' $metadir/pkgdef)
 	local vendor=$(_upls ${vendor_temp#pkgvendor=*})
 	local packager="${pkgedby} <${email}>"
-	# A little snip from buildpkg.functions:unpack
-	if [ "${source[0]:0:1}" != "/" ]; then # We have a relative pathname
-	    # expand to absolute
-	    source[0]=$srcfiles/${source[0]}
-	fi # We are now sure that ${source[0]} contains file with absolute path
-	# To avoid recording an absolute path in the sha1sum output that gets inserted
-	# into relnotes we cd first then run sha1sum
-	local path="${source[0]%/*}" # Extract path part
-	local file="${source[0]##*/}" # Extract filename part
-	local source_sha1sum="`(cd "$path"; $SHA1SUM "$file")`"
+	# Compute SHA1 sums for all source entries
+	local s
+	local path
+	local file
+	local source_sha1sum
+	local temp_source_sha1sum
+	for ((s=0; $s < ${#source[@]}; s++))
+	do
+	    # A little snip from buildpkg.functions:unpack
+	    if [ "${source[$s]:0:1}" != "/" ]; then # We have a relative pathname
+		# expand to absolute
+		[ -r "$srcdir/${source[$s]}" ] && source[$s]="$srcdir/${source[$s]}"
+		[ -r "$srcfiles/${source[$s]}" ] && source[$s]="$srcfiles/${source[$s]}"
+	    fi # We are now sure that ${source[$s]} contains file with absolute path
+	    # To avoid recording an absolute path in the sha1sum output that gets inserted
+	    # into relnotes we cd first then run sha1sum
+	    path="${source[$s]%/*}" # Extract path part
+	    file="${source[$s]##*/}" # Extract filename part
+	    (cd "$path"; $SHA1SUM "$file") >> $metadir/sums
+	done
+	temp_source_sha1sum="$(cat $metadir/sums | $AWK '{ printf "%s\\n",$0 }')"
+	source_sha1sum="${temp_source_sha1sum%\\*}"
+	# End of SHA1 sum computing
 	local temp_extracted_env="$($SED -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|$GREP ^ENV|$SED -e 's/ENV //g'|$AWK '{ printf "%s\\n",$0 }' && $RM -f /tmp/env.sh)"
 	# Remove trailing \n
 	local extracted_env="${temp_extracted_env%\\*}"
