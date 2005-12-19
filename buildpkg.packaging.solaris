@@ -31,7 +31,18 @@ pkgvendor="http://change/me/please"
 pkgdesc="mumble mubmle... hmm someone forgot to fill this out!"
 
 cpu=sparcv9
-os=sol`$UNAME -r`
+os=`$UNAME -r`
+# Courtesy of nba (see dm2conv/solaris/mkpkg.sh)
+case $os in
+5.[0123456]|5.5.1)
+    os=sol`echo $os | sed s/5./2./`
+    ;;
+5.*)
+    os=sol`echo $os | sed s/5.//`
+    ;;
+*)
+    echo I do not know how; exit 1;;
+esac
 
 # Default pkginfo.in file
 pkginfo=$buildpkgbase/scripts/pkginfo.in
@@ -212,6 +223,8 @@ add_proto()
 	if [ "$defperm" == "-" ]; then
 	    permlist=$($LS -l "$i" | $CUT -d " " -f 1)
 	    perm=$(compute_octal $permlist)
+	else
+	    perm=$defperm
 	fi
 	echo "f none $i $perm $owner $group" >> $metadir/prototype.$secname
     done
@@ -244,7 +257,9 @@ add_proto()
 	if [ "$defperm" == "-" ]; then
             permlist=$($LS -ld "$i" | $CUT -d " " -f 1)
             perm=$(compute_octal $permlist)
-        fi
+        else
+	    perm=$defperm
+	fi
 	echo "d none $i $perm $owner $group" >> $metadir/prototype.$secname
     done
     IFS=$OIFS
@@ -267,6 +282,8 @@ add_dir()
     if [ "$defperm" == "-" ]; then
 	permlist=$($LS -ld "$dir" | $CUT -d " " -f 1)
 	perm=$(compute_octal $permlist)
+    else
+	perm=$defperm
     fi
     echo "d none $dir $perm $owner $group" >> $metadir/prototype.$secname
     echo "$dir" >> $metadir/files.tmp
@@ -285,6 +302,7 @@ parse_def()
     local secname=""
     local secpos=0
     local legalend=0
+    local hasaddedpkginfo=0
 
     while read line
     do
@@ -306,6 +324,7 @@ parse_def()
 		    section=0 # Finished this section
 		    foundfiles=0 #
 		    legalend=1 # We encountered a syntacticly correct section end
+		    hasaddedpkginfo=0
 		    # Add scripts if requested
 		    add_scripts $secname
 		fi
@@ -340,9 +359,13 @@ parse_def()
 			defaultuid=$(echo $triplet | $AWK -F, '{ print $2 }')
 			defaultgid=$(echo $triplet | $AWK -F, '{ print $3 }')
 			foundfiles=1
-			pack_info $secname # Create pkginfo
-			# Start the prototype file by adding the pkginfo file
-			add_meta_file pkginfo "$metadir/pkginfo.$secname" $secname
+			if [ $hasaddedpkginfo -eq 0 ]; then
+			    # start a new package
+			    pack_info $secname # Create pkginfo
+			    # Start the prototype file by adding the pkginfo file
+			    add_meta_file pkginfo "$metadir/pkginfo.$secname" $secname
+			    hasaddedpkginfo=1
+			fi
 		    else
 			if [ $foundfiles -eq 1 ]; then # We already found the 'files' line so this must be the filelist
 			    if [ "${line:0:4}" == "dir " ]; then
@@ -485,7 +508,9 @@ generic_pack()
 	setdir ${stagedir}${topinstalldir}${dir_prefix}/${_infodir}
 	[ "$gzinfo" -eq 1 ] && compress_info
     fi
-    setdir "${stagedir}${prefix}"
+    #setdir "${stagedir}${prefix}"
+    # pkgdef should list files relative to topinstalldir
+    setdir "${stagedir}${topinstalldir}"
     parse_def
     check_unpackaged
     # Create a list of all the packages that we are going to build
