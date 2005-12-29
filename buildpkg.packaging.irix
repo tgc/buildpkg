@@ -1050,7 +1050,11 @@ extract_deps()
 	    if [ -L "$interp" ]; then
 		echo $($FILE -h "$interp" | $SED -e 's/.* to //')
 	    else
-		echo $interp
+		if [ "$(echo $interp | $CUT -d' ' -f1)" = "/usr/bin/env" ]; then
+		    echo "/usr/bin/env"
+		else
+		    echo $interp
+		fi
 	    fi
 	done | $SORT -u | $XARGS -r $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
     fi
