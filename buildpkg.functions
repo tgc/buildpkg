@@ -56,6 +56,7 @@ MKDIR=/usr/bin/mkdir
 CP=/usr/bin/cp
 TEE=/bin/tee
 GREP=/bin/grep
+EGREP=/bin/egrep
 UNIQ=/bin/uniq
 BASENAME=/bin/basename
 DIRNAME=/bin/dirname
@@ -138,6 +139,13 @@ custom_install=0
 # way of running configure. We default to using the generic version
 # but if set to 0 it will try to use run_configure function instead
 generic_configure=1
+
+# Allow overriding the make target for building
+# We default to an empty string so the default target will be built
+make_build_target=""
+
+# Allow skipping the configure run
+no_configure=0
 
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
@@ -603,16 +611,18 @@ generic_build()
 {
     setdir ${srcdir}/${topsrcdir}/$1
 
-    if [ $generic_configure -eq 1 ]; then
-	./configure $(_upls $configure_args)
-    else
-	# Platform specific configure run
-	run_configure
+    if [ $no_configure -eq 0 ]; then
+	if [ $generic_configure -eq 1 ]; then
+	    ./configure $(_upls $configure_args)
+	else
+	    # Platform specific configure run
+	    run_configure
+	fi
     fi
     if [ $? -ne 0 ]; then
 	error $E_BAD_CONFIG generic_build
     fi
-    $MAKE_PROG 
+    $MAKE_PROG $(_upls $make_build_target)
     if [ $? -ne 0 ]; then
 	error $E_BAD_MAKE generic_build
     fi
