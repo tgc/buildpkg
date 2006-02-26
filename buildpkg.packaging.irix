@@ -24,6 +24,7 @@ specfile=$metadir/$topdir.spec
 depends=$metadir/depends
 opsfile=$metadir/ops
 hidefile=$metadir/hide
+showfilescache=/tmp/sf.cache
 
 # Preformat manpages since Irix is not likely to have nroff available
 catman=1
@@ -82,7 +83,14 @@ __configure="./configure"
 # add them to this var to have them filtered out
 ignore_deps=""
 
-# If using mipspro please set this to 1
+# When matching dependencies with packages should we resolve
+# symlinks before looking in the showfilescache?
+# Requires readlink from GNU coreutils.
+# Should be 1 for Irix 5.3
+deps_resolve_symlinks=0
+
+# If using MIPSPro 7.x please set this to 1
+# If using Irix 5.3 IDO please set this to 2
 mipspro=0
 
 # Comment these declarations to get it to run with ksh
@@ -935,12 +943,22 @@ auto_rel()
 	# Remove trailing whitespace and \n
 	local fullcf="${temp_fullcf%\\*}"
 	# end
-	if [ "$mipspro" -gt 0 ]; then
-	    local compiler="$(cc -version 2>&1)"
-	else
-	    local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
-	    local compiler="gcc ${compiler_temp##* }"
-	fi
+	case $mipspro in
+	    0)
+		local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
+		local compiler="gcc ${compiler_temp##* }"
+		;;
+	    1) 
+		local compiler="$(cc -version 2>&1)"
+		;;
+	    2)
+		local compiler="Irix 5.3 IDO"
+		;;
+	    *)
+		echo "Unknown compiler: mipspro=$mipspro"
+		exit 1
+		;;
+	esac
 	local pkgnam_temp=$($GREP 'pkgname=' $metadir/pkgdef)
 	local pkgnam=$(_upls ${pkgnam_temp#pkgname=*})
 	local vendor_temp=$($GREP 'pkgvendor=' $metadir/pkgdef)
@@ -1006,6 +1024,27 @@ auto_dist()
     $CP $specfile $distmetadir
 }
 
+# dep_pkg_name: Given a filename it will look it up and find the subsystemname
+# Params: A list of filenames
+# Uses the showfiles cache to find the subsystemnames that the input filenames
+# belong to.
+dep_pkg_name()
+{
+    local pkg
+    while read files
+    do
+	for i in $files
+	do
+	    [ -L "$i" -a $deps_resolve_symlinks -eq 1 ] && i=$(${READLINK} -f "$i")
+	    pkg=$(${GREP} " ${i:1}$" $showfilescache 2>/dev/null)
+	    if [ -n "$pkg" ]; then
+		#echo "Found $i in $pkg" >> /tmp/depdebug
+		echo "$pkg"
+	    fi
+	done
+    done
+}
+
 # extract_deps: Given a subsystem it will extract the dependencies
 # params: $1 = subsystem name (like tgc_xxx.sw.lib)
 # It goes through the idb file and finds all the files
@@ -1030,7 +1069,7 @@ extract_deps()
 	    # $LDD $f | $GREP \= | $AWK -F'	' '{ print $3 }'  | $CUT -d\  -f2
 	    # Ariel Faigons perl5 ldd
 	    $LDD $f | $GREP \= | $GREP -v 'not found' | $SED -e 's/.*=> //g'
-	done | $SORT -u | $XARGS -r $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
+	done | $SORT -u | dep_pkg_name | $AWK '{ print $4 }' | $SORT -u
     fi
     # Compute dependencies for dynamic libraries
     if [ -n "$liblist" ]; then
@@ -1040,7 +1079,7 @@ extract_deps()
 	    #$LDD $f | $GREP \= | $AWK -F'	' '{ print $3 }'  | $CUT -d\  -f2
 	    # Ariel Faigon's perl5 ldd
 	    $LDD $f | $GREP \= | $GREP -v 'not found' | $SED -e 's/.*=> //g'
-	done | $SORT -u | $XARGS -r $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
+	done | $SORT -u | dep_pkg_name | $AWK '{ print $4 }' | $SORT -u
     fi
     # Compute dependencies for scripts
     if [ -n "$scriptlist" ]; then
@@ -1056,7 +1095,7 @@ extract_deps()
 		    echo $interp
 		fi
 	    fi
-	done | $SORT -u | $XARGS -r $SHOWFILES -- | $AWK '{ print $4 }' | $SORT -u
+	done | $SORT -u | dep_pkg_name | $AWK '{ print $4 }' | $SORT -u
     fi
 }
 
@@ -1072,6 +1111,9 @@ auto_deps()
     local deps
     local subsystems
 
+    # Populate showfiles cache
+    $SHOWFILES -l > $showfilescache
+
     subsystems="$($AWK '{ print $7 }' < $idbfile | $SORT -u | $GREP sw)"
     for i in $subsystems
     do
@@ -1081,6 +1123,7 @@ auto_deps()
 	    echo "${i#*.} $j $($SHOWPRODS -n $j | $GREP $j | $AWK '{ print $3 }') maxint"
 	done
     done | $SORT -u > ${depends}_auto
+    rm -f $showfilescache
 }
 
 # run_configure(): Do the configure part of the build stage
