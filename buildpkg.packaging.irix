@@ -352,13 +352,14 @@ add_dir()
     local defperm=$3
     local owner=$4
     local group=$5
-    local topinstd="${topinstalldir:1}"
+    local topinstd="$topinstalldir"
 
-    [ ! "$topinstalldir" == "/" ] && topinstalldir="${topinstalldir}/"
+    #[ ! "$topinstalldir" == "/" ] && topinstalldir="${topinstalldir}/"
+    [ ! "$topinstd" = "/" ] && topinstd="${topinstd:1}/"
 
     # This is a workaround
     # Sometimes $topinstalldir:1 returns garbage when topinstalldir=/
-    [ "$topinstalldir" = "/" ] && topinstd=""
+    [ "$topinstd" = "/" ] && topinstd=""
 	
     # Note that dir blablah is *not* added to $metadir/files.tmp
     local FILES=$($FIND $fspec -type d -print)
