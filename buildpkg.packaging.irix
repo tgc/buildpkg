@@ -285,8 +285,13 @@ add_files()
 	local group=$5
 	local specattr=$6
 	local slash=''
+	local topinstd=${topinstalldir:1}
 
 	[ ! "$topinstalldir" == "/" ] && slash='/' #="${topinstalldir}/"
+
+	# This is a workaround
+	# Sometimes $topinstalldir:1 returns garbage when topinstalldir=/
+	[ "$topinstalldir" = "/" ] && topinstd=""
 
 	local FILES=$($FIND $fspec -type f -print|$TEE -a $metadir/files.tmp)
 	OIFS=$IFS # We play IFS tricks so we can handle filenames with embedded spaces
@@ -304,12 +309,12 @@ add_files()
 	    doop=$(check_ops "$i")
 	    fname=$(fix_fname "$i")
 	    if [ ! -z "$specattr" ]; then
-		echo "f $perm $owner $group ${topinstalldir:1}${slash}$fname $i ${pkgname}.${prodcat} $specattr" >>$idbfile
+		echo "f $perm $owner $group ${topinstd}${slash}$fname $i ${pkgname}.${prodcat} $specattr" >>$idbfile
 	    else
 		if [ ! -z "$doop" ]; then
-		    echo "f $perm $owner $group ${topinstalldir:1}${slash}$fname $i ${pkgname}.${prodcat} $doop" >>$idbfile
+		    echo "f $perm $owner $group ${topinstd}${slash}$fname $i ${pkgname}.${prodcat} $doop" >>$idbfile
 		else
-		    echo "f $perm $owner $group ${topinstalldir:1}${slash}$fname $i ${pkgname}.${prodcat}" >>$idbfile
+		    echo "f $perm $owner $group ${topinstd}${slash}$fname $i ${pkgname}.${prodcat}" >>$idbfile
 		fi
 	    fi
 
@@ -332,7 +337,7 @@ add_files()
 	    local temp=`$LS -l "$i"|$CUT -d '>' -f 2`
 	    local symval=${temp# }
 	    fname=$(fix_fname "$i")
-	    echo "l $perm $owner $group ${topinstalldir:1}${slash}$fname $i ${pkgname}.${prodcat} symval($symval)" >>$idbfile
+	    echo "l $perm $owner $group ${topinstd}${slash}$fname $i ${pkgname}.${prodcat} symval($symval)" >>$idbfile
 	done
 	IFS=$OIFS
 }
@@ -347,8 +352,13 @@ add_dir()
     local defperm=$3
     local owner=$4
     local group=$5
+    local topinstd="${topinstalldir:1}"
 
     [ ! "$topinstalldir" == "/" ] && topinstalldir="${topinstalldir}/"
+
+    # This is a workaround
+    # Sometimes $topinstalldir:1 returns garbage when topinstalldir=/
+    [ "$topinstalldir" = "/" ] && topinstd=""
 	
     # Note that dir blablah is *not* added to $metadir/files.tmp
     local FILES=$($FIND $fspec -type d -print)
@@ -365,7 +375,7 @@ add_dir()
 		perm=$defperm
 	fi
 	fname=$(fix_fname "$i")
-	echo "d $perm $owner $group ${topinstalldir:1}$fname $i ${pkgname}.${prodcat}" >>$idbfile
+	echo "d $perm $owner $group ${topinstd}$fname $i ${pkgname}.${prodcat}" >>$idbfile
     done
     IFS=$OIFS
 }
