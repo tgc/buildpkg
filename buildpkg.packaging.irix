@@ -980,7 +980,7 @@ auto_rel()
 	local path
 	local file
 	local source_sha1sum
-	local temp_source_sha1sum
+	local temp_source_sha1sum=""
 	for ((s=0; $s < ${#source[@]}; s++))
 	do
 	    # A little snip from buildpkg.functions:unpack
@@ -995,7 +995,7 @@ auto_rel()
 	    file="${source[$s]##*/}" # Extract filename part
 	    (cd "$path"; $SHA1SUM "$file") >> $metadir/sums
 	done
-	temp_source_sha1sum="$(cat $metadir/sums | $AWK '{ printf "%s\\n",$0 }')"
+	[ -r "$metadir/sums" ] && temp_source_sha1sum="$(cat $metadir/sums | $AWK '{ printf "%s\\n",$0 }')"
 	source_sha1sum="${temp_source_sha1sum%\\*}"
 	# End of SHA1 sum computing
 	local temp_extracted_env="$($SED -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|$GREP ^ENV|$SED -e 's/ENV //g'|$AWK '{ printf "%s\\n",$0 }' && $RM -f /tmp/env.sh)"
