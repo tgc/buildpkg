@@ -147,6 +147,9 @@ make_build_target=""
 # Allow skipping the configure run
 no_configure=0
 
+# When building perl modules should we run make test?
+maketest=0
+
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
 # ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
@@ -628,6 +631,49 @@ generic_build()
     fi
 }
 
+# generic_build_perl(): Build a perl module from source
+# params: same as generic_build
+# This is based on code ripped out of a RPM specfile generated
+# by cpan2rpm. Someday perhaps cpan2inst will come to exist but
+# until then this is a bit of shortcut for build.sh
+#
+generic_build_perl()
+{
+    setdir source
+    $GGREP -rsl '^#!.*perl' . |
+    $GGREP -v '.bak$' |$XARGS --no-run-if-empty \
+    ${__PERL} -MExtUtils::MakeMaker -e 'MY->fixin(@ARGV)'
+    ${__PERL} Makefile.PL `${__PERL} -MExtUtils::MakeMaker -e " print qq|PREFIX=${stagedir}${prefix}| if \$ExtUtils::MakeMaker::VERSION =~ /5\.9[1-6]|6\.0[0-5]/ "`
+    # Now do the actual build using std. generic_build with no_configure=1
+    no_configure=1
+    generic_build
+    # And a little extra, this is a candidate for inclusion in plain generic_build
+    if [ "$maketest" -eq 1 ]; then
+        $MAKE_PROG test
+    fi
+}
+
+# makeinstall(): Generic make install ripped from rpm
+# params: $@ passed directly to make install
+makeinstall()
+{
+    $MAKE_PROG \
+	prefix=${stagedir}${prefix} \
+	exec_prefix=${stagedir}${prefix} \
+	bindir=${stagedir}${prefix}/${_bindir} \
+	sbindir=${stagedir}${prefix}/${_sbindir} \
+	sysconfdir=${stagedir}${prefix}/${_sysconfdir} \
+	datadir=${stagedir}${prefix}/${_sharedir} \
+	includedir=${stagedir}${prefix}/${_includedir} \
+	libdir=${stagedir}${prefix}/${_libdir} \
+	libexecdir=${stagedir}${prefix}/libexec \
+	localstatedir=${stagedir}${prefix}/var \
+	sharedstatedir=${stagedir}${prefix}/com \
+	mandir=${stagedir}${prefix}/${_mandir} \
+	infodir=${stagedir}${prefix}/${_infodir} \
+    install $@
+}
+
 # generic_install(): Install already built source
 # params: $1 = destvar [$2 = dir to descend to *inside* "source"]
 # destvar is the variable that make should override to install into the staging
@@ -664,6 +710,78 @@ generic_install()
     fi
 }
 
+# generic_install_perl(): Install already built perl module
+# params: none
+# This is based on code ripped out of a RPM specfile generated
+# by cpan2rpm. Someday perhaps cpan2inst will come to exist but
+# until then this is a bit of shortcut for build.sh
+generic_install_perl()
+{
+    clean stage
+    setdir source
+    makeinstall $(${__PERL} -MExtUtils::MakeMaker -e " print \$ExtUtils::MakeMaker::VERSION <= 6.05 ? qq|PREFIX=${stagedir}${prefix}| : qq|DESTDIR=${stagedir}| ")
+
+    # remove special files
+    $FIND ${stagedir} -name "perllocal.pod" \
+	-o -name ".packlist" 		    \
+	-o -name "*.bs"			    \
+	| $XARGS -i rm -f {}
+
+    # no empty directories
+    $FIND ${stagedir}${prefix}		    \
+	-type d -depth			    \
+	-exec rmdir {} \; 2>/dev/null
+
+    export BUILDROOT="$stagedir"
+
+    ${__PERL} -MFile::Find -le '
+    my $buildroot = $ENV{BUILDROOT};
+    find({ wanted => \&wanted, no_chdir => 1}, "$buildroot");
+    # No docs here, add them in the usual way but to pkgdef.template
+    #print "doc  samples Parser Expat Changes README";
+    for my $x (sort @dirs, @files) {
+        push @ret, $x unless indirs($x);
+        }
+    print join "\n", sort @ret;
+
+    sub wanted {
+        return if /auto$/;
+
+        local $_ = $File::Find::name;
+        my $f = $_; s|^\Q$buildroot\E||;
+        return unless length;
+        return $files[@files] = $_ if -f $f;
+
+        $d = $_;
+        /\Q$d\E/ && return for reverse sort @INC;
+	# This will expand everything outside the "perl" paths
+	# to files. cpan2rpm includes the mandir in this list
+	# but that will break buildpkg since they are processed
+	# later and the names thus change leaving pkgdef broken
+        $d =~ /\Q$_\E/ && return
+            for qw|/etc /usr/tgcware/bin /usr/tgcware/share|;
+
+        $dirs[@dirs] = $_;
+        }
+
+    sub indirs {
+        my $x = shift;
+        $x =~ /^\Q$_\E\// && $x ne $_ && return 1 for @dirs;
+        }
+     ' > filelist
+
+    [ -z filelist ] && {
+	echo "ERROR: empty %files listing"
+	exit -1
+    }
+    # For handling any doc lines in the filelist, disabled for now (see above)
+    #eval $($GREP '^doc' filelist)
+
+    # To get stripping etc we call the regular generic_install now but with custom_install=1
+    custom_install=1
+    generic_install
+}
+
 # generic_pack(): Build package using files from 'install' stage
 # params: $1 - indicating whether or not the root is complete as described below
 # We expect generic_install to have made $stagedir the "root" dir
@@ -680,3 +798,14 @@ case $OSTYPE in
     *)		echo "No packaging system function library available for this OS"
 		;;
 esac
+
+# generic_pack_perl(): Package a perl module
+# params: same as generic_pack
+# This is just a small wrapper which generates the pkgdef file
+# from pkgdef.template and the filelist in the sourcetree generated
+# by generic_install_perl.
+generic_pack_perl()
+{
+    $CAT $metadir/pkgdef.template $srcdir/$topsrcdir/filelist | $SED -e "s;^$prefix/;;g" > $metadir/pkgdef
+    generic_pack "$@"
+}
