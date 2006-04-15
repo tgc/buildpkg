@@ -119,6 +119,8 @@ name=$topdir # as will this ditto
 pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
 
 # Functionality controls
+symlinkman=0 # Don't replace .so linking with symlinks pr. default
+symlinkman_verbose=0 # Be quiet
 catman=0   # Don't fix manpages pr. default
 gzman=0	    # Don't gzip man pages pr. default
 compressman=0 # Don't compress(1) man pages pr. default
@@ -416,6 +418,40 @@ do_autonuke()
     if [ $didnuke -eq 0 ]; then
 	echo "Found nothing to nuke"
     fi
+}
+
+# symlink_man(): Convert .so style references to symlinks
+# params: none
+# Run from 'cwd' where 'cwd' contains manX subdirs
+symlink_man()
+{
+    local i
+    local manpage
+    local solink
+    local linkdest
+    local OIFS
+    local manpages
+
+    echo "Symlinking manpages"
+    for i in man?
+    do
+	if [ -d $i ]; then
+	    OIFS="$IFS"
+	    IFS="
+	    "
+	    manpages="$(echo $i/*)"
+	    for manpage in $manpages
+	    do
+		solink="$($HEAD -1 $manpage)"
+		if [ "${solink:0:3}" = ".so" ]; then # .so style link to be converted
+		    linkdest="${solink/#.so /}"
+		    [ "$symlinkman_verbose" -eq 1 ] && echo "Symlinking $linkdest->$manpage"
+		    $LN -sf "$linkdest" "$manpage"
+		fi
+	    done
+	    IFS="$OIFS"
+	fi
+    done
 }
     
 # fix_man(): create compressed pre-formatted manpages from raw ones
@@ -809,3 +845,7 @@ generic_pack_perl()
     $CAT $metadir/pkgdef.template $srcdir/$topsrcdir/filelist | $SED -e "s;^$prefix/;;g" > $metadir/pkgdef
     generic_pack "$@"
 }
+
+# vim: set filetype=sh : #
+# vim: set sts=4 : #
+# vim: set shiftwidth=4 : #

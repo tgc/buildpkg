@@ -27,6 +27,7 @@ hidefile=$metadir/hide
 showfilescache=/tmp/sf.cache
 
 # Preformat manpages since Irix is not likely to have nroff available
+symlinkman=1 # resolve .so links or formatting/compressing will fail
 catman=1
 
 # Compress manpages
@@ -1172,6 +1173,7 @@ generic_pack()
 
     if [ -d ${stagedir}${prefix}/${_mandir} ]; then
 	setdir "${stagedir}${prefix}/${_mandir}"
+	[ "$symlinkman" -eq 1 ] && symlink_man
 	[ "$catman" -eq 1 ] && fix_man
 	[ "$gzman" -eq 1 -o "$compressman" -eq 1 ] && compress_man
     fi
