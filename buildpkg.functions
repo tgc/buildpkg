@@ -444,7 +444,7 @@ symlink_man()
 	    do
 		solink="$($HEAD -1 $manpage)"
 		if [ "${solink:0:3}" = ".so" ]; then # .so style link to be converted
-		    linkdest="${solink/#.so /}"
+		    linkdest="${solink#.so*/}"
 		    [ "$symlinkman_verbose" -eq 1 ] && echo "Symlinking $linkdest->$manpage"
 		    $LN -sf "$linkdest" "$manpage"
 		fi
