@@ -24,7 +24,7 @@ done
 
 $CP scripts/build.sh.generic $arg1/build.sh
 if [ "$($UNAME -s)" == "IRIX" -o "$($UNAME -s)" == "IRIX64" ]; then
-    $SED -e 's;bin/bash;usr/local/bin/bash;g' $arg1/build.sh > $arg1/build.sh.tmp
+    $SED -e 's;bin/bash;usr/tgcware/bin/bash;g' $arg1/build.sh > $arg1/build.sh.tmp
     $MV $arg1/build.sh.tmp $arg1/build.sh
     $CP scripts/pkgdef.template.irix $arg1/meta/pkgdef
     $CP scripts/relnotes.template.irix $arg1/meta/relnotes
