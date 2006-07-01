@@ -655,7 +655,7 @@ create_spec()
 	spec_img_header ${pctop[$i]} "${pdtop[$i]}" $version-$pkgver >> $specfile
 	while [ "$pcidx" -lt "$pcsize" ]
 	do
-	    rv=`$EXPR match "${pc[$pcidx]}" ''${pctop[$i]}''`
+	    rv=`$EXPR match "${pc[$pcidx]}" ''${pctop[$i]}\\\.''`
 	    if [ ! "$rv" -eq 0 ]; then # We got a hit!
 		spec_subsys_header ${pctop[$i]} `echo ${pc[$pcidx]}|$CUT -d . -f 2` "${pd[$pcidx]}" "${ps[$pcidx]}" >> $specfile
 		reqsize=${#reqs[@]}
