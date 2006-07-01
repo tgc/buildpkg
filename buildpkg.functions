@@ -152,6 +152,9 @@ no_configure=0
 # When building perl modules should we run make test?
 maketest=0
 
+# When patching use -p1 as default prefix
+patch_prefix="-p1"
+
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
 # ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
@@ -638,7 +641,7 @@ generic_prep()
 	#    done
 	while [ $i -lt $numpatch ]
 	do
-	    patch $i -p1
+	    patch $i $patch_prefix
 	    let i=i+1
 	done
     fi
