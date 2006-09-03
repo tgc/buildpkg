@@ -1137,7 +1137,7 @@ auto_deps()
 	do
 	    echo "${i#*.} $j $($SHOWPRODS -n $j | $GREP $j | $AWK '{ print $3 }') maxint"
 	done
-    done | $SORT -u > ${depends}_auto
+    done | $SORT -u | grep $pkgprefix > ${depends}_auto
     rm -f $showfilescache
 }
 
