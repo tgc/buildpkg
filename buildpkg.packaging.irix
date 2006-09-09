@@ -1178,7 +1178,7 @@ generic_pack()
 	setdir "${stagedir}${prefix}/${_mandir}"
 	[ "$symlinkman" -eq 1 ] && symlink_man
 	[ "$catman" -eq 1 ] && fix_man
-	[ "$gzman" -eq 1 -o "$compressman" -eq 1 ] && compress_man
+	[ "$gzman" -eq 1 -o "$compressman" -eq 1 -o "$packman" -eq 1 ] && compress_man
     fi
     if [ -d ${stagedir}${prefix}/${_infodir} ]; then
 	setdir "${stagedir}${prefix}/${_infodir}"

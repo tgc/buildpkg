@@ -66,6 +66,7 @@ PRINTF=/usr/bin/printf
 LN=/usr/bin/ln
 GINSTALL=/usr/local/bin/install # BSD compatible install - usually GNU install
 COMPRESS=/usr/bsd/compress
+PACK=/usr/bin/pack
 SHA1SUM=/usr/local/bin/sha1sum
 UNZIP=/usr/local/bin/unzip
 
@@ -124,6 +125,7 @@ symlinkman_verbose=0 # Be quiet
 catman=0   # Don't fix manpages pr. default
 gzman=0	    # Don't gzip man pages pr. default
 compressman=0 # Don't compress(1) man pages pr. default
+packman=0 # Don't pack(1) man pages pr. default
 gzinfo=1    # Compress infopages pr. default
 dostrip=1
 dostrip_elf=1   # default to stripping binaries during the install stage
@@ -504,6 +506,10 @@ compress_man()
     if [ "$compressman" -eq 1 ]; then # Use compress(1)
 	local compsuffix=Z
 	local pack="$COMPRESS -f"
+    fi
+    if [ "$packman" -eq 1 ]; then # Use pack(1)
+	local compsuffix=z
+	local pack="$PACK -f"
     fi
 
     echo "Compressing manpages"
