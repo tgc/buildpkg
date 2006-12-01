@@ -114,7 +114,7 @@ os=irix`$UNAME -r`
 _os=$($UNAME -sr|$SED -e 's/ //g' -e 's/\.//g' -e 's/IRIX64/IRIX/g'|$TR '[A-Z]' '[a-z]')
 cpu=mips3
 
-configure_args='--prefix=$prefix'
+configure_args='--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefix}/${_infodir}'
 
 META_CLEAN="$topdir.spec $topdir.idb files.tmp ${depends##*/}_auto ${depends##*/}_all sums"
 
