@@ -22,6 +22,7 @@ subsysconf=$buildpkgbase/scripts/subsys.conf
 idbfile=$metadir/$topdir.idb
 specfile=$metadir/$topdir.spec
 depends=$metadir/depends
+replaces=$metadir/replaces
 opsfile=$metadir/ops
 hidefile=$metadir/hide
 showfilescache=/tmp/sf.cache
@@ -102,6 +103,8 @@ declare -a pctop # Array of toplevel product categories (image)
 declare -a pdtop # Array of matching descriptions
 declare -a reqs # Array of subsystems with prereqs
 declare -a reqp # Array of prereqs (should match up with reqs)
+declare -a replacess # Array of subsystems that replaces another
+declare -a replacepkg # Array of what is replaced (should match up with replacess)
 declare -a hide # Files that should be "hidden" with nohist
 declare -a opfiles # Files that should have an ops associated
 declare -a opscript # Ops to associate with opfiles
@@ -207,7 +210,6 @@ spec_subsys_header()
 {
     echo "$indent8 subsys $2 $4"
     echo "$indent12 id \"$3\""
-    echo "$indent12 replaces self"
     echo "$indent12 exp $pkgname.$1.$2"
 }
 # spec_subsys_req_header()
@@ -228,6 +230,13 @@ spec_subsys_req_footer()
 {
     echo "$indent24"")"
 }
+# spec_subsys_replaces()
+# param: $1 = subsystem that is replaced
+spec_subsys_replaces()
+{
+    echo "$indent12 replaces $1"
+}
+    
 # spec_subsys_footer()
 # param: none
 spec_subsys_footer()
@@ -503,6 +512,25 @@ fetch_depends()
     fi
 }
 
+# fetch_replaces(): Fetch information about subsystem replacements
+# params: none
+#
+fetch_replaces()
+{
+    local reqidx=0
+    if [ -r ${replaces} ]; then
+	while read ss replpkg reqvers
+	do
+	    if [ "$reqvers" == "auto" ]; then
+		reqvers="0 maxint" # Replace all versions of a subsystem
+	    fi
+	    replacess[$reqidx]=$ss
+	    replacepkg[$reqidx]="$replpkg $reqvers"
+	    let "reqidx = $reqidx + 1"
+	done < ${replaces}
+    fi
+}
+
 # fetch_ops(): Fetch ops
 # params: none
 # Populates the firstop and lastop variables
@@ -645,6 +673,7 @@ create_spec()
     fetch_imageconf
     fetch_subsysdesc
     fetch_depends
+    fetch_replaces
     spec_header $pkgname "$name $version-${pkgver}${shortdesc}" > $specfile
     local pcsize=${#pc[@]}
     local pctopsize=${#pctop[@]}
@@ -658,6 +687,16 @@ create_spec()
 	    rv=`$EXPR match "${pc[$pcidx]}" ''${pctop[$i]}\\\.''`
 	    if [ ! "$rv" -eq 0 ]; then # We got a hit!
 		spec_subsys_header ${pctop[$i]} `echo ${pc[$pcidx]}|$CUT -d . -f 2` "${pd[$pcidx]}" "${ps[$pcidx]}" >> $specfile
+		spec_subsys_replaces self >> $specfile
+		replacepkgsize=${#replacepkg[@]}
+		if [ "$replacepkgsize" -ge 1 ]; then # Atleast one replaces statement needed
+		    for ((j=0; j < $replacepkgsize; j++))
+		    do
+			if [ "${replacess[$j]}" = "${pc[$pcidx]}" ]; then
+			    spec_subsys_replaces "${replacepkg[$j]}" >> $specfile
+			fi
+		    done
+		fi
 		reqsize=${#reqs[@]}
 		unset reqidlist # Zero the array
 		reqidlidx=0
