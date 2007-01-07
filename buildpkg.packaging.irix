@@ -330,7 +330,7 @@ add_files()
 	    else
 		echo "f $perm $owner $group ${topinstd}${slash}$fname $i ${pkgname}.${prodcat}" >>$idbfile
 	    fi
-
+	    specattr="" # If there's more than one file we must reset specattr to avoid polluting the next entries
 	done
 	IFS=$OIFS
 	# Handle symlinks
