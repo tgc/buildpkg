@@ -74,6 +74,9 @@ UNZIP=/usr/local/bin/unzip
 NROFF=/usr/local/bin/nroff
 NROFFOPTS="-c -mandoc -Tascii -t"
 
+# __ prefixed namespace for tool programs
+. $BUILDPKG_BASE/scripts/buildpkg.tools
+
 # Define defaults
 pkgdir=${PWD##*/} # topdir under $BUILDPKG_BASE
 buildpkgbase=$BUILDPKG_BASE
@@ -105,6 +108,7 @@ _mandir=man
 _infodir=info
 _includedir=include
 _sysconfdir=etc
+_datadir=$_sharedir
 
 tmpdir=/tmp
 

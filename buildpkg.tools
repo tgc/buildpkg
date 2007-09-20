@@ -1,0 +1,46 @@
+#
+# Global tool defintions for buildpkg
+#
+# Define tool programs in rpm style __ prefixed namespace
+__strip=/usr/bin/strip
+__uname=/usr/bin/uname
+__tar=/usr/tgcware/bin/tar # GNU tar please!
+__vtar=/usr/bin/tar # vendor supplied tar
+__bzip2=/usr/bin/bzip2
+__gzip=/usr/bin/gzip
+__patch=/usr/tgcware/bin/patch # GNU patch 2.5 or better please!
+__rm=/usr/bin/rm
+__rmdir=/usr/bin/rmdir
+__mkdir=/usr/bin/mkdir
+__make=/usr/tgcware/bin/make # GNU make please!
+__find=/usr/bin/find # vendor supplied find, GNU find will require changes to the script
+__xargs=/usr/bin/xargs
+__cat=/usr/bin/cat
+__awk=/usr/bin/nawk # This must be nawk or GNU awk - plain /usr/bin/awk will *not* work
+__sed=/usr/bin/sed
+__gsed=/usr/tgcware/bin/sed
+__sort=/usr/bin/sort
+__cut=/usr/bin/cut
+__ls=/usr/bin/ls
+__expr=/usr/bin/expr
+__mv=/usr/bin/mv
+__mkdir=/usr/bin/mkdir
+__cp=/usr/bin/cp
+__tee=/bin/tee
+__grep=/bin/grep
+__egrep=/bin/egrep
+__uniq=/bin/uniq
+__basename=/bin/basename
+__dirname=/bin/dirname
+__tr=/bin/tr
+__file=/usr/bin/file # Used by do_strip()
+__ln=/usr/bin/ln
+__ln_s="/usr/bin/ln -s"
+__install=/usr/tgcware/bin/install # BSD compatible install - usually GNU install
+__compress=/usr/bsd/compress
+__pack=/usr/bin/pack
+__sha1sum=/usr/tgcware/bin/sha1sum
+__unzip=/usr/tgcware/bin/unzip
+
+# Groff stuff for manpages
+__nroff=/usr/tgcware/bin/nroff
