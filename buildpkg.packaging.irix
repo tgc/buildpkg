@@ -992,7 +992,7 @@ auto_rel()
 	local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
 	# compute configure info for relnotes
 	local cf="$(_upls $configure_args)"
-	[ -n "$ac_overrides" ] && local aco="$(echo $ac_overrides | $TR ' ' '\n' | $AWK '{ printf "%s \\\\ \\n",$0 }')"
+	[ -n "$ac_overrides" ] && local aco="$(for ar in $ac_overrides; do echo $ar; done | $AWK '{ printf "%s \\\\ \\n",$0 }')"
 	local temp_fullcf="$(echo "$__configure $cf" | $AWK '{ printf "%s\\n",$0 }')"
 	temp_fullcf="$(echo "${aco}${temp_fullcf}")"
 	# Remove trailing whitespace and \n
