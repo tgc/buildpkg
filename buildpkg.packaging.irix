@@ -10,9 +10,6 @@ GENDIST_OPTS="-nostrip"
 SHOWPRODS="/usr/sbin/showprods"
 SHOWFILES="/usr/sbin/showfiles"
 
-GZIP=/usr/people/tgc/bin/gzip
-BZIP2=/usr/local/bin/bzip2
-
 # This is the hostname command we'll want on Irix
 HOSTNAME=/usr/bsd/hostname
 
@@ -23,6 +20,7 @@ idbfile=$metadir/$topdir.idb
 specfile=$metadir/$topdir.spec
 depends=$metadir/depends
 replaces=$metadir/replaces
+updates=$metadir/updates
 opsfile=$metadir/ops
 hidefile=$metadir/hide
 showfilescache=/tmp/sf.cache
@@ -105,6 +103,8 @@ declare -a reqs # Array of subsystems with prereqs
 declare -a reqp # Array of prereqs (should match up with reqs)
 declare -a replacess # Array of subsystems that replaces another
 declare -a replacepkg # Array of what is replaced (should match up with replacess)
+declare -a updates # Array of subsystems that updates another
+declare -a updatepkg # Array of what is updated (should match up with updatess)
 declare -a hide # Files that should be "hidden" with nohist
 declare -a opfiles # Files that should have an ops associated
 declare -a opscript # Ops to associate with opfiles
@@ -236,7 +236,14 @@ spec_subsys_replaces()
 {
     echo "$indent12 replaces $1"
 }
-    
+
+# spec_subsys_updates()
+# param: $1 = subsystem that is updated
+spec_subsys_updates()
+{
+    echo "$indent12 updates $1"
+}
+     
 # spec_subsys_footer()
 # param: none
 spec_subsys_footer()
@@ -532,6 +539,25 @@ fetch_replaces()
     fi
 }
 
+# fetch_updates(): Fetch information about subsystem updates
+# params: none
+#
+fetch_updates()
+{
+    local reqidx=0
+    if [ -r ${updates} ]; then
+	while read ss updpkg reqvers
+	do
+	    if [ "$reqvers" == "auto" ]; then
+		reqvers="0 maxint" # Update all versions of a subsystem
+	    fi
+	    updatess[$reqidx]=$ss
+	    updatepkg[$reqidx]="$updpkg $reqvers"
+	    let "reqidx = $reqidx + 1"
+	done < ${updates}
+    fi
+}
+
 # fetch_ops(): Fetch ops
 # params: none
 # Populates the firstop and lastop variables
@@ -675,6 +701,7 @@ create_spec()
     fetch_subsysdesc
     fetch_depends
     fetch_replaces
+    fetch_updates
     spec_header $pkgname "$name $version-${pkgver}${shortdesc}" > $specfile
     local pcsize=${#pc[@]}
     local pctopsize=${#pctop[@]}
@@ -688,6 +715,7 @@ create_spec()
 	    rv=`$EXPR match "${pc[$pcidx]}" ''${pctop[$i]}\\\.''`
 	    if [ ! "$rv" -eq 0 ]; then # We got a hit!
 		spec_subsys_header ${pctop[$i]} `echo ${pc[$pcidx]}|$CUT -d . -f 2` "${pd[$pcidx]}" "${ps[$pcidx]}" >> $specfile
+		# Add 'replaces' statements
 		spec_subsys_replaces self >> $specfile
 		replacepkgsize=${#replacepkg[@]}
 		if [ "$replacepkgsize" -ge 1 ]; then # Atleast one replaces statement needed
@@ -698,6 +726,17 @@ create_spec()
 			fi
 		    done
 		fi
+		# Add 'updates' statements
+		updatepkgsize=${#updatepkg[@]}
+		if [ "$updatepkgsize" -ge 1 ]; then # Atleast one updates statement needed
+		    for ((j=0; j < $updatepkgsize; j++))
+		    do
+			if [ "${updatess[$j]}" = "${pc[$pcidx]}" ]; then
+			    spec_subsys_updates "${updatepkg[$j]}" >> $specfile
+			fi
+		    done
+		fi
+		# Find 'prereq' statements
 		reqsize=${#reqs[@]}
 		unset reqidlist # Zero the array
 		reqidlidx=0
@@ -708,6 +747,7 @@ create_spec()
 			let "reqidlidx=$reqidlidx + 1"
 		    fi
 		done
+		# Add 'prereq' statements
 		reqidlsize=$reqidlidx
 		if [ "$reqidlsize" -ge 1 ]; then
 		    spec_subsys_req_header >> $specfile
