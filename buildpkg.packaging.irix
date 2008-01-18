@@ -375,7 +375,8 @@ add_dir()
     [ "$topinstd" = "/" ] && topinstd=""
 	
     # Note that dir blablah is *not* added to $metadir/files.tmp
-    local FILES=$($FIND $fspec -type d -print)
+    #local FILES=$($FIND $fspec -type d -print)
+    local FILES=$fspec
     OIFS=$IFS
     IFS="
     "
