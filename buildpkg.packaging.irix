@@ -89,8 +89,7 @@ ignore_deps=""
 # Should be 1 for Irix 5.3
 deps_resolve_symlinks=0
 
-# If using MIPSPro 7.x please set this to 1
-# If using Irix 5.3 IDO please set this to 2
+# If not using gcc then please set this to 1½
 mipspro=0
 
 # Comment these declarations to get it to run with ksh
@@ -1038,22 +1037,16 @@ auto_rel()
 	# Remove trailing whitespace and \n
 	local fullcf="${temp_fullcf%\\*}"
 	# end
-	case $mipspro in
-	    0)
-		local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
-		local compiler="gcc ${compiler_temp##* }"
-		;;
-	    1) 
-		local compiler="$(cc -version 2>&1)"
-		;;
-	    2)
+	if [ $mipspro -eq 0 ]; then
+	    local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
+	    local compiler="gcc ${compiler_temp##* }"
+	else # not gcc
+	    if [ "$_os" = "irix53" ]; then
 		local compiler="Irix 5.3 IDO"
-		;;
-	    *)
-		echo "Unknown compiler: mipspro=$mipspro"
-		exit 1
-		;;
-	esac
+	    else
+		local compiler="$(cc -version 2>&1)"
+	    fi
+	fi
 	local pkgnam_temp=$($GREP 'pkgname=' $metadir/pkgdef)
 	local pkgnam=$(_upls ${pkgnam_temp#pkgname=*})
 	local vendor_temp=$($GREP 'pkgvendor=' $metadir/pkgdef)
