@@ -24,25 +24,26 @@ META_CLEAN="prototype prototype.in pkginfo files.tmp"
 
 # Define defaults
 # pkginfo information.
-# The following 3 vars will be used when constructing the pkginfo file
+# The following 4 vars will be used when constructing the pkginfo file
 # Override as necessary.
 pkgcat="application"	# A reasonable default
 pkgvendor="http://change/me/please"
 pkgdesc="mumble mubmle... hmm someone forgot to fill this out!"
+email=swpkg@jupiterrise.com
 
-cpu=sparcv9
-os=`$UNAME -r`
+cpu=`uname -p`
+os=sunos`$UNAME -r`
 # Courtesy of nba (see dm2conv/solaris/mkpkg.sh)
-case $os in
-5.[0123456]|5.5.1)
-    os=sol`echo $os | sed s/5./2./`
-    ;;
-5.*)
-    os=sol`echo $os | sed s/5.//`
-    ;;
-*)
-    echo I do not know how; exit 1;;
-esac
+#case $os in
+#5.[0123456]|5.5.1)
+#    os=sunos`echo $os | sed s/5./2./`
+#    ;;
+#5.*)
+#    os=sunos`echo $os | sed s/5.//`
+#    ;;
+#*)
+#    echo I do not know how; exit 1;;
+#esac
 
 # Default pkginfo.in file
 pkginfo=$buildpkgbase/scripts/pkginfo.in
@@ -64,7 +65,7 @@ gzman=0
 # ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
 # We hardquote it so that we can control when we want it
 # evaluated (using _upls)
-distfile='$secname-$version-$secver.sb-$os-$cpu-$pkgdirdesig'
+distfile='$secname-$version-$secver.tgc-$os-$cpu-$pkgdirdesig'
 
 ##################################################### 
 # "external" functions
@@ -115,6 +116,7 @@ pack_info()
 	-e "s#%%topinstalldir%%#$topinstalldir#g" \
 	-e "s#%%pkgdesc%%#$pkgdesc#g" \
 	-e "s#%%pstamp%%#$pstamp#g" \
+	-e "s#%%email%%#$email#g" \
 	$pkginfo > $metadir/pkginfo.$secname
 }
 
@@ -330,7 +332,7 @@ parse_def()
 		fi
 		;;
 	    *)
-		equalindex=$(expr index "$line" =)
+		equalindex=$($EXPR index "$line" =)
 		if [ ! $equalindex -eq 0 ]; then
 		    case "${line:0:(($equalindex-1))}" in
 			'pkgname')
@@ -345,7 +347,7 @@ parse_def()
 			'pkgvendor')
 				    pkgvendor="$(_upls ${line:$equalindex:${#line}})"
 				    ;;
-			'pkgdesc')
+			'pkgdesc'|'shortdesc')
 				    pkgdesc="$(_upls ${line:$equalindex:${#line}})"
 				    ;;
 			'pkgver')   
