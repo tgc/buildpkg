@@ -117,6 +117,7 @@ pack_info()
 	-e "s#%%pkgdesc%%#$pkgdesc#g" \
 	-e "s#%%pstamp%%#$pstamp#g" \
 	-e "s#%%email%%#$email#g" \
+	-e "s#%%maxinst%%#$maxinst#g" \
 	$pkginfo > $metadir/pkginfo.$secname
 }
 
@@ -317,6 +318,8 @@ parse_def()
 		    section=1
 		    secname="${line:1:((${#line}-2))}"
 		    legalend=0
+		    # Set default value for maxinst for the new section
+		    maxinst=1
 		fi
 		;;
 	    '')
@@ -352,6 +355,9 @@ parse_def()
 				    ;;
 			'pkgver')   
 				    pkgver="$(_upls ${line:$equalindex:${#line}})"
+				    ;;
+			'maxinst')  
+				    maxinst="$(_upls ${line:$equalindex:${#line}})"
 				    ;;
 		    esac
 		else # Perhaps we hit 'files'?
