@@ -24,11 +24,13 @@ META_CLEAN="prototype prototype.in pkginfo files.tmp"
 
 # Define defaults
 # pkginfo information.
-# The following 4 vars will be used when constructing the pkginfo file
 # Override as necessary.
 pkgcat="application"	# A reasonable default
 pkgvendor="http://change/me/please"
 pkgdesc="mumble mubmle... hmm someone forgot to fill this out!"
+
+# vendor & contact information
+pkgedby="Tom G. Christensen"
 email=swpkg@jupiterrise.com
 
 cpu=`uname -p`
@@ -56,6 +58,9 @@ ignore_unpackaged_files=0 # default to check for unpackaged files in the stage a
 
 # Solaris doesn't know how to handle any kind of compressed manpages
 gzman=0
+
+# Default configure args
+configure_args='--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefix}/${_infodir}'
 
 # Host specific configuration
 [ -r $buildpkgbase/scripts/config.`hostname`.solaris ] && . $buildpkgbase/scripts/config.`hostname`.solaris
@@ -105,12 +110,12 @@ pack_info()
     fi
     local secname=$1
 
-    pstamp="$os-$($UNAME -n)`date '+%Y%m%d%H%M'`"
+    local pstamp="$os-$($UNAME -n)`date '+%Y%m%d%H%M'`"
 
     $SED -e "s#%%pkgname%%#$pkgname#g" \
 	-e "s#%%version%%#$version#g" \
 	-e "s#%%pkgcat%%#$pkgcat#g" \
-	-e "s#%%pkgvendor%%#$pkgvendor#g" \
+	-e "s#%%pkgvendor%%#$pkgvendor - packaged by $pkgedby#g" \
 	-e "s#%%pkgver%%#$pkgver#g" \
 	-e "s#%%name%%#$name#g" \
 	-e "s#%%topinstalldir%%#$topinstalldir#g" \
