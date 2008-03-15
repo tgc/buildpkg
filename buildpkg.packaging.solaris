@@ -33,7 +33,7 @@ pkgdesc="mumble mubmle... hmm someone forgot to fill this out!"
 pkgedby="Tom G. Christensen"
 email=swpkg@jupiterrise.com
 
-cpu=`uname -p`
+arch=`uname -p`
 os=sunos`$UNAME -r`
 # Courtesy of nba (see dm2conv/solaris/mkpkg.sh)
 #case $os in
@@ -66,11 +66,11 @@ configure_args='--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefi
 [ -r $buildpkgbase/scripts/config.`hostname`.solaris ] && . $buildpkgbase/scripts/config.`hostname`.solaris
 
 # Distfiles should be named like this
-# <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
-# ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
+# <name>-<version>-<pkgver>.sb-<os>-<arch>-<pkgdirdesig>
+# ie: libmad-0.14.2b-1.sb-sol5.8-sparc-local
 # We hardquote it so that we can control when we want it
 # evaluated (using _upls)
-distfile='$secname-$version-$secver.tgc-$os-$cpu-$pkgdirdesig'
+distfile='$secname-$version-$secver.tgc-$os-$arch-$pkgdirdesig'
 
 ##################################################### 
 # "external" functions
@@ -122,6 +122,7 @@ pack_info()
 	-e "s#%%pstamp%%#$pstamp#g" \
 	-e "s#%%email%%#$email#g" \
 	-e "s#%%maxinst%%#$maxinst#g" \
+	-e "s#%%arch%%#$arch#g" \
 	$pkginfo > $metadir/pkginfo.$secname
 }
 

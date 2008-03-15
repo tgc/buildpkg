@@ -1,6 +1,6 @@
 PKG="%%pkgname%%"
 NAME="%%name%%"
-ARCH="sparc"
+ARCH="%%arch%%"
 VERSION="%%version%%,REV=%%pkgver%%"
 CATEGORY="%%pkgcat%%"
 VENDOR="%%pkgvendor%%"
