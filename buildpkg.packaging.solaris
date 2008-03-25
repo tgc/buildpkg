@@ -20,7 +20,7 @@ strip_elf_args="" # GNU default is -g
 strip_shared_args="" # GNU default is --strip-unneeded
 strip_static_args="" # GNU default is -g
 
-META_CLEAN="prototype prototype.in pkginfo files.tmp"
+META_CLEAN="prototype prototype.in pkginfo files.tmp depend.*.auto depend.*.all"
 
 # Define defaults
 # pkginfo information.
@@ -55,6 +55,7 @@ usedepend=1 # default to looking for a depend file in $metadir
 usescripts=1 # default to add pre/post scripts if available
 usespace=1 # default to looking for a space file in $metadir
 ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area 
+deps_resolve_symlinks=0 # Set to 1 to resolve symlinks before computing deps (requires GNU readlink)
 
 # Solaris doesn't know how to handle any kind of compressed manpages
 gzman=0
@@ -166,7 +167,11 @@ add_scripts()
     local secname=$1
 
     # If a dependency file is available then use it
-    [ -r $metadir/depend.$secname -a $usedepend -eq 1 ] && add_meta_file depend "$metadir/depend.$secname" $secname
+    if [ $usedepend -eq 1 ]; then
+	[ -r $metadir/depend.$secname ] && cat $metadir/depend.$secname > $metadir/depend.${secname}.all
+	[ -r $metadir/depend.${secname}.auto ] && cat $metadir/depend.${secname}.auto >> $metadir/depend.${secname}.all
+	add_meta_file depend "$metadir/depend.${secname}.all" $secname
+    fi
 
     # If a space file is available then use it
     [ -r $metadir/space.$secname -a $usespace -eq 1 ] && add_meta_file space "$metadir/space.$secname" $secname
@@ -297,6 +302,97 @@ add_dir()
     echo "$dir" >> $metadir/files.tmp
 }
 
+# dep_pkg_name: Given a filename it will look it up and find the PKGNAME
+# Params: A list of filenames
+# For each file we use pkgchk -l -p to find the package containing it
+dep_pkg_name()
+{
+    local pkg
+    local i
+    while read files
+    do
+        for i in $files
+        do
+            [ -L "$i" -a $deps_resolve_symlinks -eq 1 ] && i=$(${READLINK} -f "$i")
+            pkg=$(pkgchk -l -p $i | $AWK '/^\t/ { print $1 }')
+            if [ -n "$pkg" -a $(echo $pkg | wc -l) -eq 1 ]; then
+                #echo "Found $i in $pkg" >> /tmp/depdebug
+                echo "$pkg"
+	    else
+		echo "dep_pkg_name: $i returned more than one package" >> /tmp/depdebug
+	    fi
+        done
+    done
+}
+
+# extract_deps(): Given a section name it will extract the dependencies
+# params: $1 = section name (like libiconv)
+# It goes through the prototype.$1 file and computes the dependencies
+# for all files and returns the PKGINST attribute
+extract_deps()
+{
+    local secname=$1
+    # Can't use setdir since it has output
+    cd ${stagedir}${topinstalldir}
+
+    # Grab the filelist and classify files
+    local filelist=$($AWK '{ print $3 }' $metadir/prototype.$secname | $GREP '.')
+    local exelist=$(echo $filelist | $XARGS $FILE | $EGREP -v ":.* (commands|script) " | $GREP ":.*executable" | $CUT -d: -f1)
+    local scriptlist=$(echo $filelist | $XARGS $FILE | $EGREP ":.* (commands|script) " | $CUT -d: -f1)
+    local liblist=$(echo $filelist | $XARGS $FILE | $GREP ":.*dynamic lib" | $CUT -d: -f1)
+
+    # Compute dependencies for executables
+    if [ -n "$exelist" ]; then
+        for f in $exelist; do
+            [ -r $f -a -x $f ] || continue
+            # Generic Solaris ldd
+            $LDD $f | $GREP -v 'not found' | $AWK '/\=/ { print $3 }'
+        done | $SORT -u | dep_pkg_name | $SORT -u
+    fi
+    # Compute dependencies for dynamic libraries
+    if [ -n "$liblist" ]; then
+        for f in $liblist; do
+            [ -r $f ] || continue
+            # Generic Solaris ldd
+            $LDD $f | $GREP -v 'not found' | $AWK '/\=/ { print $3 }'
+        done | $SORT -u | dep_pkg_name | $SORT -u
+    fi
+    # Compute dependencies for scripts
+    if [ -n "$scriptlist" ]; then
+        for f in $scriptlist; do
+            [ -r $f -a -x $f ] || continue
+            interp="$($HEAD -n 1 $f | $CUT -d\! -f2- | $SED -e 's/ -.*//')"
+            if [ -L "$interp" ]; then
+                echo $($FILE -h "$interp" | $SED -e 's/.* to //')
+            else
+                if [ "$(echo $interp | $CUT -d' ' -f1)" = "/usr/bin/env" ]; then
+                    echo "/usr/bin/env"
+                else
+                    echo $interp
+                fi
+            fi
+        done | $SORT -u | dep_pkg_name | $SORT -u
+    fi
+}
+
+# auto_deps(): Compute dependencies
+# params: $1 = section name $2 = pkgname
+# It will call extract_deps() to get the packagenames of the
+# dependencies. The dependencies will be added to $metadir/depend.$1.auto
+auto_deps()
+{
+    local j
+    local deps
+    local secname=$1
+    local pkgname=$1
+
+    deps="$(extract_deps $secname | $SORT -u | $GREP -v $pkgname)"
+    for j in $deps
+    do
+	echo "P $j $(pkgparam $j NAME)"
+	echo -e "\t($arch) $(pkgparam $j VERSION)\n"
+    done | $SED -n "/$pkgprefix/{p;n;p;}" > $metadir/depend.$secname.auto
+}
 
 # parse_pkgdef(): Read in $metadir/pkgdef
 # params: none
@@ -336,6 +432,7 @@ parse_def()
 		    legalend=1 # We encountered a syntacticly correct section end
 		    hasaddedpkginfo=0
 		    # Add scripts if requested
+		    auto_deps $secname $pkgname
 		    add_scripts $secname
 		fi
 		;;
@@ -401,6 +498,7 @@ parse_def()
 	    section=0 # Finished this section
 	    foundfiles=0 #
 	    # Add scripts if requested
+	    auto_deps $secname $pkgname
 	    add_scripts $secname
 	fi
     fi
@@ -532,3 +630,7 @@ generic_pack()
 	make_pkg $i
     done
 }
+
+# vim: set filetype=sh : #
+# vim: set sts=4 : #
+# vim: set shiftwidth=4 : #
