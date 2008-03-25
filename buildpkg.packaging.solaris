@@ -438,6 +438,15 @@ parse_def()
 		    # Add scripts if requested
 		    auto_deps $secname $pkgname
 		    add_scripts $secname
+		    # Reset variables
+		    unset pkgname
+		    unset name
+		    unset pkgcat
+		    unset pkgvendor
+		    unset pkgdesc
+		    unset shortdesc
+		    unset pkgver
+		    unset maxinst
 		fi
 		;;
 	    *)
@@ -504,6 +513,15 @@ parse_def()
 	    # Add scripts if requested
 	    auto_deps $secname $pkgname
 	    add_scripts $secname
+	    # Reset variables
+	    unset pkgname
+	    unset name
+	    unset pkgcat
+	    unset pkgvendor
+	    unset pkgdesc
+	    unset shortdesc
+	    unset pkgver
+	    unset maxinst
 	fi
     fi
 }
