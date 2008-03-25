@@ -445,7 +445,6 @@ parse_def()
 		    unset pkgvendor
 		    unset pkgdesc
 		    unset shortdesc
-		    unset pkgver
 		    unset maxinst
 		fi
 		;;
@@ -520,7 +519,6 @@ parse_def()
 	    unset pkgvendor
 	    unset pkgdesc
 	    unset shortdesc
-	    unset pkgver
 	    unset maxinst
 	fi
     fi
