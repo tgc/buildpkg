@@ -69,6 +69,7 @@ COMPRESS=/usr/bsd/compress
 PACK=/usr/bin/pack
 SHA1SUM=/usr/local/bin/sha1sum
 UNZIP=/usr/local/bin/unzip
+LDD=/usr/bin/ldd
 
 # Groff stuff for manpages
 NROFF=/usr/local/bin/nroff
