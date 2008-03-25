@@ -95,6 +95,7 @@ metainstalldir=$topinstalldir
 
 # Keep this in hard-quotes to delay expansion
 configure_args='--prefix=$prefix --disable-nls'
+__configure="./configure"
 
 # Docdir relative to $prefix
 _docdir=share/doc
@@ -665,7 +666,7 @@ generic_build()
 
     if [ $no_configure -eq 0 ]; then
 	if [ $generic_configure -eq 1 ]; then
-	    ./configure $(_upls $configure_args)
+	    $__configure $(_upls $configure_args)
 	else
 	    # Platform specific configure run
 	    run_configure
