@@ -113,6 +113,10 @@ pack_info()
 
     local pstamp="$os-$($UNAME -n)`date '+%Y%m%d%H%M'`"
 
+    # Check length of pkgname and name to make sure we're within limits
+    [ ${#pkgname} -gt 9 ] && error $E_SVR4_PKG_OVERFLOW pack_info
+    [ ${#name} -gt 256 ] && error $E_SVR4_NAME_OVERFLOW pack_info
+
     $SED -e "s#%%pkgname%%#$pkgname#g" \
 	-e "s#%%version%%#$version#g" \
 	-e "s#%%pkgcat%%#$pkgcat#g" \
