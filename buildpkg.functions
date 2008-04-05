@@ -154,6 +154,10 @@ generic_configure=1
 # We default to an empty string so the default target will be built
 make_build_target=""
 
+# Allow overriding the make target for running the testsuite
+# We default to 'check'
+make_check_target="check"
+
 # Allow skipping the configure run
 no_configure=0
 
@@ -684,6 +688,14 @@ generic_build()
     if [ $? -ne 0 ]; then
 	error $E_BAD_MAKE generic_build
     fi
+}
+
+# generic_check(): Run the check target
+# params: $1 = dir to descend to *inside* "source" - optional
+generic_check()
+{
+    setdir ${srcdir}/${topsrcdir}/$1
+    $MAKE_PROG -k $(_upls $make_check_target)
 }
 
 # generic_build_perl(): Build a perl module from source
