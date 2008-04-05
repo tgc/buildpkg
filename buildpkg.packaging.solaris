@@ -56,6 +56,12 @@ usescripts=1 # default to add pre/post scripts if available
 usespace=1 # default to looking for a space file in $metadir
 ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area 
 deps_resolve_symlinks=0 # Set to 1 to resolve symlinks before computing deps (requires GNU readlink)
+create_versioned_deps=1 # Set to 1 to create versioned dependencies
+version_all_deps=0 # Set to 1 to add version on *all* deps, even SUNW (if enabled)
+include_all_deps=1 # Set to 1 to create deps on packages regardless of vendor
+
+# To exclude a dependency, add its name to this variable
+ignore_deps=""
 
 # Solaris doesn't know how to handle any kind of compressed manpages
 gzman=0
@@ -387,15 +393,81 @@ auto_deps()
 {
     local j
     local deps
+    local i
+    local ignore
     local secname=$1
-    local pkgname=$1
+    local pkgname=$(get_pkgname $secname)
+    local temp
 
-    deps="$(extract_deps $secname | $SORT -u | $GREP -v $pkgname)"
+    deps="$(extract_deps $secname | $SORT -u)"
+    # We need to sort out any packages created from the same build
+    # Internal deps *must* be recorded in a depend file instead
+    for j in $(list_pkgs)
+    do
+	temp=$(get_pkgname $j)
+	deps=$(echo $deps | sed -e "/$temp/d")
+    done
+    # Parse any speciel depends
+    # We don't do ignore_deps processing for these deps
+    if [ -r $metadir/depend ]; then
+	local extra_pkgname # Package that should have the depend
+	local extra_dep_pkgname # The name of depend (either a pkgname or a secname)
+	local extra_dep_version # version of the depend (or auto keyword)
+	$SED -n "/^$pkgname/p" $metadir/depend |
+	while read extra_pkgname extra_dep_pkgname extra_dep_version
+	do
+	    local internal_dep=0
+	    for i in $(list_pkgs)
+	    do
+		[ "$extra_dep_pkgname" = "$i" ] && internal_dep=1
+	    done
+	    if [ $internal_dep -eq 1 ]; then
+		echo "P $(get_pkgname $extra_dep_pkgname) $(get_pkgdesc $extra_dep_pkgname)"
+	    else
+		echo "P $extra_dep_pkgname $(pkgparam $extra_dep_pkgname NAME)"
+	    fi
+	    if [ $create_versioned_deps -eq 1 ]; then
+		# create versioned_deps
+		if [ "$extra_dep_version" = "auto" ]; then
+		    if [ $internal_dep -eq 1 ]; then
+			extra_dep_version="$(get_pkgversion $extra_dep_pkgname)"
+			extra_dep_pkgname=$(get_pkgname $extra_dep_pkgname) # For later use we can now resolve this permanently
+		    else
+			extra_dep_version="$(pkgparam $extra_dep_pkgname VERSION)"
+		    fi
+		fi
+		# Only for deps with $pkgprefix?
+		if [ $version_all_deps -eq 0 ]; then
+		    [ -n "$(echo $extra_dep_pkgname | $GREP $pkgprefix)" ] && echo -e "\t($arch) $extra_dep_version"
+		else
+		    echo -e "\t($arch) $extra_dep_version"
+		fi
+	    fi
+	done > $metadir/depend.$secname.auto
+    fi
+
+    if [ $include_all_deps -eq 0 ]; then
+	deps=$(echo $deps | sed -n "/$pkgprefix/p")
+    fi
     for j in $deps
     do
-	echo "P $j $(pkgparam $j NAME)"
-	echo -e "\t($arch) $(pkgparam $j VERSION)\n"
-    done | $SED -n "/$pkgprefix/{p;n;p;}" > $metadir/depend.$secname.auto
+	ignore=0
+	for i in $ignore_deps
+	do
+	    # if there's a match then set ignore flag and break the loop
+	    [ "$i" = "$j" ] && ignore=1 && break
+	done
+	[ $ignore -eq 0 ] && echo "P $j $(pkgparam $j NAME)"
+	if [ $ignore -eq 0 -a $create_versioned_deps -eq 1 ]; then
+	    # create versioned_deps
+	    # Only for deps with $pkgprefix?
+	    if [ $version_all_deps -eq 0 ]; then
+		[ -n "$(echo $j | $GREP $pkgprefix)" ] && echo -e "\t($arch) $(pkgparam $j VERSION)\n"
+	    else
+		echo -e "\t($arch) $(pkgparam $j VERSION)\n"
+	    fi
+	fi
+    done >> $metadir/depend.$secname.auto
 }
 
 # parse_pkgdef(): Read in $metadir/pkgdef
@@ -435,9 +507,6 @@ parse_def()
 		    foundfiles=0 #
 		    legalend=1 # We encountered a syntacticly correct section end
 		    hasaddedpkginfo=0
-		    # Add scripts if requested
-		    auto_deps $secname $pkgname
-		    add_scripts $secname
 		fi
 		;;
 	    *)
@@ -501,9 +570,6 @@ parse_def()
 	else
 	    section=0 # Finished this section
 	    foundfiles=0 #
-	    # Add scripts if requested
-	    auto_deps $secname $pkgname
-	    add_scripts $secname
 	fi
     fi
 }
@@ -558,6 +624,30 @@ get_pkgrev()
     local verfield="$($GREP VERSION $metadir/pkginfo.$secname|$SED -e 's/"//g')"
     local secver=$(_upls ${verfield#*REV=})
     echo $secver
+}
+
+# get_pkgversion(): Extract pkgversion (VERSION field) from pkginfo file
+# params: $1 = metafile suffix
+get_pkgversion()
+{
+    local secname=$1
+
+    local verfield="$($GREP VERSION $metadir/pkginfo.$secname|$SED -e 's/"//g')"
+    local secver=$(_upls ${verfield##VERSION=})
+    echo $secver
+}
+
+# get_pkgdesc(): Extract pkgdesc from a pkginfo file
+# params: $1 = metafile suffix
+get_pkgdesc()
+{
+    local secname=$1
+
+    if [ -r $metadir/pkginfo.$secname ]; then
+	local pd=$($GREP NAME $metadir/pkginfo.$secname)
+	local pdesc=$(_upls ${pd##NAME=})
+	echo $pdesc
+    fi
 }
 
 # do_strip_bin(): Strip binaries
@@ -631,6 +721,8 @@ generic_pack()
     # Create a list of all the packages that we are going to build
     for i in $(list_pkgs)
     do
+	auto_deps $i
+	add_scripts $i
 	make_pkg $i
     done
 }
