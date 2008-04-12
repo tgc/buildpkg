@@ -320,20 +320,21 @@ add_dir()
 }
 
 # auto_rel(): Fix up and add releasenotes to stagedir
-# params: none
+# params: $1 = secname
 # This will make some substitutions on a release note template
 # and then copy the result to $stagedir/${metainstalldir}relnotes/$topdir-$version-$pkgver.txt
 auto_rel()
 {
+    local secname=$1
     local i
     local rn
 
-    for i in relnotes relnotes.${_os}
+    for i in relnotes relnotes.${_os} relnotes.$secname relnotes.${_os}.$secname
     do
 	[ -r ${metadir}/${i} ] && rn=$i
     done
     if [ -r ${metadir}/${rn} ]; then
-	local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
+	local relmetadir=${stagedir}${metainstalldir}relnotes/$secname-$version-$pkgver
 	### compute configure info for relnotes
 	local cf="$(_upls $configure_args)"
 	[ -n "$ac_overrides" ] && local aco="$(for ar in $ac_overrides; do echo $ar; done | $AWK '{ printf "%s \\\\ \\n",$0 }')"
@@ -357,8 +358,8 @@ auto_rel()
 	    fi
 	fi
 	###
-	local pkgnam=$(get_pkgname $relnotes_secname)
-	local vendor=$(get_pkgvendor $relnotes_secname)
+	local pkgnam=$(get_pkgname $secname)
+	local vendor=$(get_pkgvendor $secname)
 	local packager="${pkgedby} <${email}>"
 	### Compute SHA1 sums for all source entries
 	local s
@@ -393,7 +394,7 @@ auto_rel()
 	local extracted_env="${temp_extracted_env%\\*}"
 	###
 	### Add dependencies
-	local temp_deps="$($CAT $metadir/depend.*.all | $GREP -v 'REV=' | $SORT -u | $AWK '{ printf "%s\\n",$0 }')"
+	local temp_deps="$($CAT $metadir/depend.$secname.all | $SED -e '/^	/d' | $SORT -u | $AWK '{ printf "%s\\n",$0 }')"
 	local deps="${temp_deps%\\*}"
 	###
 	$MKDIR -p $relmetadir
@@ -406,11 +407,10 @@ auto_rel()
 	    -e "s;%%SOURCE_SHA1SUM%%;${source_sha1sum};g" \
 	    -e "s;%%ENVIRONMENT%%;${extracted_env};g" \
 	    -e "s;%%DEPENDENCIES%%;${deps};g" \
-		${metadir}/${rn} > "$relmetadir/${topdir}.txt"
+		${metadir}/${rn} > "$relmetadir/${secname}.txt"
 
 	### Add the relnotes to the prototype file
-	#add_dir $defaultperms $defaultuid $defaultgid "relnotes/$topdir-$version-$pkgver" $relnotes_secname # Add dir entry
-	add_proto $defaultperms $defaultuid $defaultgid "relnotes" $relnotes_secname
+	add_proto $defaultperms $defaultuid $defaultgid "relnotes" $secname
     else
 	echo "auto_rel: No release notes found!"
     fi
@@ -509,7 +509,7 @@ auto_deps()
     for j in $(list_pkgs)
     do
 	temp=$(get_pkgname $j)
-	deps=$(echo $deps | sed -e "/$temp/d")
+	deps=$(echo $deps | $SED -e "/$temp/d")
     done
     # Parse any speciel depends
     # We don't do ignore_deps processing for these deps
@@ -517,7 +517,7 @@ auto_deps()
 	local extra_pkgname # Package that should have the depend
 	local extra_dep_pkgname # The name of depend (either a pkgname or a secname)
 	local extra_dep_version # version of the depend (or auto keyword)
-	$SED -n "/^$pkgname/p" $metadir/depend |
+	$SED -n "/^$pkgname /p" $metadir/depend |
 	while read extra_pkgname extra_dep_pkgname extra_dep_version
 	do
 	    local internal_dep=0
@@ -601,8 +601,6 @@ parse_def()
 		    legalend=0
 		    # Set default value for maxinst for the new section
 		    maxinst=1
-		    # By default relnotes will end up in the first package section found
-		    [ -z "$relnotes_secname" ] && relnotes_secname=$secname
 		fi
 		;;
 	    '')
@@ -844,9 +842,7 @@ generic_pack()
     do
 	auto_deps $i
 	add_scripts $i
-	# auto_rel should only run once, when relnotes_secname comes up
-	# however it depends on depend.*.all generated above so must be inside the loop
-	[ "$i" = "$relnotes_secname" ] && auto_rel
+	auto_rel $i
 	make_pkg $i
     done
 }
