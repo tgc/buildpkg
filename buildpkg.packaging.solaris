@@ -54,6 +54,7 @@ pkginfo=$buildpkgbase/scripts/pkginfo.in
 usedepend=1 # default to looking for a depend file in $metadir
 usescripts=1 # default to add pre/post scripts if available
 usespace=1 # default to looking for a space file in $metadir
+usecompver=1 # default to add compver if available in $metadir
 ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area 
 deps_resolve_symlinks=0 # Set to 1 to resolve symlinks before computing deps (requires GNU readlink)
 create_versioned_deps=1 # Set to 1 to create versioned dependencies
@@ -182,6 +183,9 @@ add_scripts()
 	[ -r $metadir/depend.${secname}.auto ] && cat $metadir/depend.${secname}.auto >> $metadir/depend.${secname}.all
 	add_meta_file depend "$metadir/depend.${secname}.all" $secname
     fi
+
+    # If a compver file is available then use it
+    [ -r $metadir/compver.$secname -a $usecompver -eq 1 ] && add_meta_file compver "$metadir/compver.$secname" $secname
 
     # If a space file is available then use it
     [ -r $metadir/space.$secname -a $usespace -eq 1 ] && add_meta_file space "$metadir/space.$secname" $secname
