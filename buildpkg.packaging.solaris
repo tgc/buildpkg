@@ -788,6 +788,33 @@ compat()
     done
 }
 
+# docs_for(): Add files from srcdir to specific package doc dir
+# params: $1 = secname $2....x = files to copy
+# Copies files from $srcdir to $_docdir/$secname-$version
+docs_for()
+{
+    local secname=$1
+    shift
+
+    local f
+    local ddir # Holds internal value of _docdir
+
+    if [ ! -z $# ]; then
+        setdir source
+        ddir=${stagedir}${prefix}/${_docdir}/${secname}-${version}
+        ${MKDIR} -p $ddir
+        echo "Adding docs"
+        until [ -z "$1" ]
+        do
+            for f in $(_upls $1)
+            do
+                ($TAR -cf - "$f")|(cd $ddir; $TAR -xvBpf -)
+            done
+            shift
+        done
+    fi
+}
+
 # do_strip_bin(): Strip binaries
 # params: none
 do_strip_bin()
