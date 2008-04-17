@@ -20,7 +20,7 @@ strip_elf_args="" # GNU default is -g
 strip_shared_args="" # GNU default is --strip-unneeded
 strip_static_args="" # GNU default is -g
 
-META_CLEAN="prototype prototype.in pkginfo files.tmp depend.*.auto depend.*.all sums"
+META_CLEAN="prototype prototype.in pkginfo files.tmp depend.*.auto depend.*.all sums sums.*"
 
 # Define defaults
 # pkginfo information.
@@ -382,10 +382,10 @@ auto_rel()
 	    # into relnotes we cd first then run sha1sum
 	    path="${source[$s]%/*}" # Extract path part
 	    file="${source[$s]##*/}" # Extract filename part
-	    (cd "$path"; $SHA1SUM "$file") >> $metadir/sums
+	    (cd "$path"; $SHA1SUM "$file") >> $metadir/sums.${secname}
 	    let s=s+1
 	done
-	[ -r "$metadir/sums" ] && temp_source_sha1sum="$(cat $metadir/sums | $AWK '{ printf "%s\\n",$0 }')"
+	[ -r "$metadir/sums.${secname}" ] && temp_source_sha1sum="$(cat $metadir/sums.${secname} | $AWK '{ printf "%s\\n",$0 }')"
 	source_sha1sum="${temp_source_sha1sum%\\*}"
 	### End of SHA1 sum computing
 	### Extract environtment variables
@@ -764,6 +764,23 @@ get_pkgvendor()
 	local pv=$($SED -n 's/VENDOR=\(.*\) - .*/\1/p' $metadir/pkginfo.$secname | $TR -d '"')
 	echo $(_upls $pv)
     fi
+}
+
+# compat(): Add a series of entries to a compver file
+# params: $1 = secname $2 = version $3 = startrev $4 = endrev
+compat()
+{
+    local secname=$1
+    local compat_version=$2
+    local startrev=$3
+    local endrev=$4
+    local i
+
+    while [ $startrev -le $endrev ]
+    do
+	echo "$compat_version,REV=$startrev" >> $metadir/compver.${secname}
+	let "startrev=startrev+1"
+    done
 }
 
 # do_strip_bin(): Strip binaries
