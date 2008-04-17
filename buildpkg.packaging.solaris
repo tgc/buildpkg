@@ -70,6 +70,10 @@ gzman=0
 # If not using gcc then please set this to 1
 suncc=0
 
+# Try and get it right from the beginning on Solaris
+_mandir=share/man
+_infodir=share/info
+
 # Default configure args
 configure_args='--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefix}/${_infodir}'
 
@@ -410,7 +414,8 @@ auto_rel()
 		${metadir}/${rn} > "$relmetadir/${secname}.txt"
 
 	### Add the relnotes to the prototype file
-	add_proto $defaultperms $defaultuid $defaultgid "relnotes" $secname
+	add_dir $defaultperms $defaultuid $defaultgid "relnotes" $secname
+	add_proto $defaultperms $defaultuid $defaultgid "relnotes/$secname-$version-$pkgver" $secname
     else
 	echo "auto_rel: No release notes found!"
     fi
