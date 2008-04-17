@@ -27,11 +27,12 @@ if [ "$($UNAME -s)" == "IRIX" -o "$($UNAME -s)" == "IRIX64" ]; then
     $SED -e 's;bin/bash;usr/tgcware/bin/bash;g' $arg1/build.sh > $arg1/build.sh.tmp
     $MV $arg1/build.sh.tmp $arg1/build.sh
     $CP scripts/pkgdef.template.irix $arg1/meta/pkgdef
-    $CP scripts/relnotes.template.irix $arg1/meta/relnotes
 fi
 
 if [ "$($UNAME -s)" == "SunOS" ]; then
     $CP scripts/pkgdef.template $arg1/meta/pkgdef
 fi
+
+$CP scripts/relnotes.template.irix $arg1/meta/relnotes
 # Make build script executable
 chmod 755 $arg1/build.sh
