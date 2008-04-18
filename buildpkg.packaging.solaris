@@ -136,8 +136,9 @@ pack_info()
 	-e "s#%%pkgcat%%#$pkgcat#g" \
 	-e "s#%%pkgvendor%%#$pkgvendor - packaged by $pkgedby#g" \
 	-e "s#%%pkgver%%#$pkgver#g" \
-	-e "s#%%name%%#$name - $pkgdesc#g" \
+	-e "s#%%name%%#$name#g" \
 	-e "s#%%topinstalldir%%#$topinstalldir#g" \
+	-e "s#%%pkgdesc%%#$pkgdesc#g" \
 	-e "s#%%pstamp%%#$pstamp#g" \
 	-e "s#%%email%%#$email#g" \
 	-e "s#%%maxinst%%#$maxinst#g" \
