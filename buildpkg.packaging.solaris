@@ -663,6 +663,8 @@ parse_def()
 			if [ $foundfiles -eq 1 ]; then # We already found the 'files' line so this must be the filelist
 			    if [ "${line:0:4}" == "dir " ]; then
 				add_dir $defaultperms $defaultuid $defaultgid "${line:4}" $secname # Add dir entry
+			    elif [ "${line:0:12}" = "default_docs" ]; then
+				add_proto $defaultperms $defaultuid $defaultgid "${line:12}${_docdir}/${secname}-${version}" $secname # Add std. doc location
 			    else
 				add_proto $defaultperms $defaultuid $defaultgid "$line" $secname # Build protype file from filespec
 			    fi
