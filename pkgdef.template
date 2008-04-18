@@ -1,5 +1,5 @@
 [main]
-pkgname="$pkgprefix""$topdir"
+pkgname="${pkgprefix}${topdir}"
 name="$topdir"
 pkgcat="application"
 pkgvendor="http://change.me/please"
