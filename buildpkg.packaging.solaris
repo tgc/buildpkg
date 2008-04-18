@@ -422,6 +422,55 @@ auto_rel()
     fi
 }
 
+# auto_dir(): Make sure all necessary dir entries are in prototype
+# param: $1 = secname
+# To avoid an endless amount of dir entries in the pkgdef this
+# function will try to automatically determine all the needed
+# entries and then add anyone missing
+auto_dir()
+{
+    local secname=$1
+
+    local fdirs
+    local ddirs
+    local i
+    local j
+
+    fdirs=$($AWK '/^f/ { print $3 }' $metadir/prototype.$secname | $SED -e 's,\(.*\)/.*$,\1,' | $SORT -u)
+    ddirs=$($AWK '/^d/ { print $3 }' $metadir/prototype.$secname | $SORT -u)
+
+    for i in $fdirs
+    do
+	# Ugly, but we need to strip first in the while loop to be able to
+	# determine exit condition properly
+	local path_comp="$i/dummy"
+	local done=0
+	# for each fdir we verify that all path components have dir entries
+	# by checking with ddirs. If one is missing it is added
+	while [ $done -eq 0 ]
+	do
+	    # To see if we're done the string must be the same after stripping
+	    [ "$path_comp" = "${path_comp%/*}" ] && done=1
+	    path_comp=${path_comp%/*}
+	    #echo "auto_dir: Checking $path_comp"
+	    local found=0
+	    for j in $ddirs
+	    do
+		if [ "$path_comp" = "$j" ]; then
+		    found=1
+		    break
+		fi
+	    done
+	    if [ "$found" -eq 0 ]; then
+		# No match, we must add an entry
+		ddirs="$(echo $ddirs $path_comp)"
+		add_dir $defaultperms $defaultuid $defaultgid "$path_comp" $secname # Add dir entry
+		echo "auto_dir: Adding $path_comp for $secname"
+	    fi
+	done
+    done
+}
+
 # dep_pkg_name: Given a filename it will look it up and find the PKGNAME
 # Params: A list of filenames
 # For each file we use pkgchk -l -p to find the package containing it
@@ -888,6 +937,10 @@ generic_pack()
     # pkgdef should list files relative to topinstalldir
     setdir "${stagedir}${topinstalldir}"
     parse_def
+    for i in $(list_pkgs)
+    do
+	auto_dir $i
+    done
     check_unpackaged
     # Create a list of all the packages that we are going to build
     for i in $(list_pkgs)
