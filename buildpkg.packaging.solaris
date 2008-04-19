@@ -621,9 +621,9 @@ auto_deps()
 	    # create versioned_deps
 	    # Only for deps with $pkgprefix?
 	    if [ $version_all_deps -eq 0 ]; then
-		[ -n "$(echo $j | $GREP $pkgprefix)" ] && echo -e "\t($arch) $(pkgparam $j VERSION)\n"
+		[ -n "$(echo $j | $GREP $pkgprefix)" ] && echo -e "\t($arch) $(pkgparam $j VERSION)"
 	    else
-		echo -e "\t($arch) $(pkgparam $j VERSION)\n"
+		echo -e "\t($arch) $(pkgparam $j VERSION)"
 	    fi
 	fi
     done >> $metadir/depend.$secname.auto
