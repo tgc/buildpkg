@@ -675,6 +675,11 @@ generic_build()
 
     if [ $no_configure -eq 0 ]; then
 	if [ $generic_configure -eq 1 ]; then
+	    local acvar
+	    for acvar in $ac_overrides
+	    do
+		export $acvar
+	    done
 	    $__configure $(_upls $configure_args)
 	else
 	    # Platform specific configure run
