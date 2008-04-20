@@ -506,8 +506,8 @@ extract_deps()
 
     # Grab the filelist and classify files
     local filelist=$($AWK '{ print $3 }' $metadir/prototype.$secname | $GREP '.')
-    local exelist=$(echo $filelist | $XARGS $FILE | $EGREP -v ":.* (commands|script) " | $GREP ":.*executable" | $CUT -d: -f1)
-    local scriptlist=$(echo $filelist | $XARGS $FILE | $EGREP ":.* (commands|script) " | $CUT -d: -f1)
+    local exelist=$(echo $filelist | $XARGS $FILE | $EGREP -v ":.* (commands|script)" | $GREP ":.*executable" | $CUT -d: -f1)
+    local scriptlist=$(echo $filelist | $XARGS $FILE | $EGREP ":.* (commands|script)" | $CUT -d: -f1)
     local liblist=$(echo $filelist | $XARGS $FILE | $GREP ":.*dynamic lib" | $CUT -d: -f1)
 
     # Compute dependencies for executables
