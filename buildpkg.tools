@@ -41,6 +41,7 @@ __compress=/usr/bsd/compress
 __pack=/usr/bin/pack
 __sha1sum=/usr/tgcware/bin/sha1sum
 __unzip=/usr/tgcware/bin/unzip
+__head=/usr/bin/head # Must support -n
 
 # Groff stuff for manpages
 __nroff=/usr/tgcware/bin/nroff

@@ -70,6 +70,7 @@ PACK=/usr/bin/pack
 SHA1SUM=/usr/local/bin/sha1sum
 UNZIP=/usr/local/bin/unzip
 LDD=/usr/bin/ldd
+HEAD=/usr/bin/head # Must support -n
 
 # Groff stuff for manpages
 NROFF=/usr/local/bin/nroff
@@ -461,7 +462,7 @@ symlink_man()
 	    manpages="$(echo $i/*)"
 	    for manpage in $manpages
 	    do
-		solink="$($HEAD -1 $manpage)"
+		solink="$($HEAD -n 1 $manpage)"
 		if [ "${solink:0:3}" = ".so" ]; then # .so style link to be converted
 		    linkdest="${solink#.so*/}"
 		    [ "$symlinkman_verbose" -eq 1 ] && echo "Symlinking $linkdest->$manpage"
