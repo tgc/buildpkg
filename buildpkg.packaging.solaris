@@ -415,8 +415,8 @@ auto_rel()
 		${metadir}/${rn} > "$relmetadir/${secname}.txt"
 
 	### Add the relnotes to the prototype file
-	add_dir $defaultperms $defaultuid $defaultgid "relnotes" $secname
-	add_proto $defaultperms $defaultuid $defaultgid "relnotes/$secname-$version-$pkgver" $secname
+	add_dir $defaultperms $defaultuid $defaultgid "${metainstalldir:1}relnotes" $secname
+	add_proto $defaultperms $defaultuid $defaultgid "${metainstalldir:1}relnotes/$secname-$version-$pkgver" $secname
     else
 	echo "auto_rel: No release notes found!"
     fi
