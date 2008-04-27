@@ -415,8 +415,8 @@ auto_rel()
 		${metadir}/${rn} > "$relmetadir/${secname}.txt"
 
 	### Add the relnotes to the prototype file
-	add_dir $defaultperms $defaultuid $defaultgid "${metainstalldir:1}relnotes" $secname
-	add_proto $defaultperms $defaultuid $defaultgid "${metainstalldir:1}relnotes/$secname-$version-$pkgver" $secname
+	add_dir $defaultperms $defaultuid $defaultgid "${metaprefix}relnotes" $secname
+	add_proto $defaultperms $defaultuid $defaultgid "${metaprefix}relnotes/$secname-$version-$pkgver" $secname
     else
 	echo "auto_rel: No release notes found!"
     fi
@@ -930,6 +930,22 @@ generic_pack()
 	setdir ${stagedir}${topinstalldir}${dir_prefix}/${_infodir}
 	[ "$gzinfo" -eq 1 ] && compress_info
     fi
+    # pkgdef entries should always be relative to topinstalldir
+    # except for the auto ones - src,dist,relnotes
+    # In that case we use metaprefix to designate their position relative
+    # to topinstalldir (note metainstalldir can never be above topinstalldir)
+    # ie. topinstalldir=/usr/local/gcc & metainstalldir=/usr/local is a no no.
+    # but topinstalldir=/usr/local & metainstalldir=/usr/local is okay and is the
+    # default
+    # This mostly matters when we have topinstalldir=/ and prefix=/usr/local like
+    # with prngd and openssh
+    # Also note that metaprefix is entirely for internal use in create_idb when
+    # we create the "auto" entries.
+    # Determine at what level metainstalldir is compared to topinstalldir
+    metaprefix=${metainstalldir##$topinstalldir}
+    metaprefix="${metaprefix#/*}"
+    # If we have a path then we'll need a / appended
+    [ ! -z "$metaprefix" ] && metaprefix="${metaprefix}/"
     # We need to add slash to the end of metainstalldir but *only* if
     # metainstalldir is not /. We do this to avoid creating an absolute path
     # which could happen with metainstalldir=/ if we unconditionally add /.
