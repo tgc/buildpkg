@@ -436,7 +436,7 @@ auto_dir()
     local i
     local j
 
-    fdirs=$($AWK '/^[fs]/ { print $3 }' $metadir/prototype.$secname | $SED -e 's,\(.*\)/.*$,\1,' | $SORT -u)
+    fdirs=$($AWK '/^[fs]/ { print $3 }' $metadir/prototype.$secname | $SED -e 's,\(.*\)=.*$,\1,' | $SED -e 's,\(.*\)/.*$,\1,' | $SORT -u)
     ddirs=$($AWK '/^d/ { print $3 }' $metadir/prototype.$secname | $SORT -u)
 
     for i in $fdirs
