@@ -436,7 +436,7 @@ auto_dir()
     local i
     local j
 
-    fdirs=$($AWK '/^f/ { print $3 }' $metadir/prototype.$secname | $SED -e 's,\(.*\)/.*$,\1,' | $SORT -u)
+    fdirs=$($AWK '/^[fs]/ { print $3 }' $metadir/prototype.$secname | $SED -e 's,\(.*\)/.*$,\1,' | $SORT -u)
     ddirs=$($AWK '/^d/ { print $3 }' $metadir/prototype.$secname | $SORT -u)
 
     for i in $fdirs
@@ -713,7 +713,7 @@ parse_def()
 			    if [ "${line:0:4}" == "dir " ]; then
 				add_dir $defaultperms $defaultuid $defaultgid "${line:4}" $secname # Add dir entry
 			    elif [ "${line:0:12}" = "default_docs" ]; then
-				add_proto $defaultperms $defaultuid $defaultgid "${line:12}${_docdir}/${secname}-${version}" $secname # Add std. doc location
+				add_proto $defaultperms $defaultuid $defaultgid "${line:12}${metaprefix}${_docdir}/${secname}-${version}" $secname # Add std. doc location
 			    else
 				add_proto $defaultperms $defaultuid $defaultgid "$line" $secname # Build protype file from filespec
 			    fi
