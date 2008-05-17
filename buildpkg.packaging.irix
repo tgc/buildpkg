@@ -112,8 +112,8 @@ declare -a opscript # Ops to associate with opfiles
 pkgprefix=tgc_
 pkgname=$pkgprefix$topdir
 
-os=irix`$UNAME -r`
-_os=$($UNAME -sr|$SED -e 's/ //g' -e 's/\.//g' -e 's/IRIX64/IRIX/g'|$TR '[A-Z]' '[a-z]')
+os=irix`${__uname} -r`
+_os=$(${__uname} -sr|${__sed} -e 's/ //g' -e 's/\.//g' -e 's/IRIX64/IRIX/g'|${__tr} '[A-Z]' '[a-z]')
 cpu=mips3
 
 configure_args='--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefix}/${_infodir}'
@@ -146,7 +146,7 @@ fix_ver()
     local i
     local version=$1
     local rev=${version##*-}
-    local ver=$(echo ${version%%-*} | $SED -e 's/-//g' -e 's/[a-zA-Z]//g')
+    local ver=$(echo ${version%%-*} | ${__sed} -e 's/-//g' -e 's/[a-zA-Z]//g')
     if [ $useextendedver -eq 1 ]; then
       ### experimental
       ### zero prefixes all single digits in a versionstring
@@ -165,7 +165,7 @@ fix_ver()
     fi
     if [ $useextendedver -eq 0 ]; then
       # Remove the dots
-      ver=$(echo $ver | $SED -e 's/\.//g')
+      ver=$(echo $ver | ${__sed} -e 's/\.//g')
     fi
     let "numpad = $ver_width - ${#ver} - ${#rev}"
     [ $numpad -lt 0 ] && error $E_BAD_VERSION fix_ver
@@ -279,7 +279,7 @@ fix_fname()
     local return
     
     # Replace ' ' with '_'
-    return=$(echo $name|$SED -e 's/ /_/g')
+    return=$(echo $name|${__sed} -e 's/ /_/g')
     echo $return
 }
     
@@ -309,7 +309,7 @@ add_files()
 	# Sometimes $topinstalldir:1 returns garbage when topinstalldir=/
 	[ "$topinstalldir" = "/" ] && topinstd=""
 
-	local FILES=$($FIND $fspec -type f -print|$TEE -a $metadir/files.tmp)
+	local FILES=$(${__find} $fspec -type f -print|${__tee} -a $metadir/files.tmp)
 	OIFS=$IFS # We play IFS tricks so we can handle filenames with embedded spaces
 	IFS="
 	"
@@ -317,7 +317,7 @@ add_files()
 	do
 	    IFS=$OIFS
 	    if [ "$defperm" == "-" ]; then
-		permlist=`$LS -l "$i" | $CUT -d " " -f 1`
+		permlist=`${__ls} -l "$i" | ${__cut} -d " " -f 1`
 		perm=$(compute_octal $permlist)	
 	    else
 		perm=$defperm
@@ -340,7 +340,7 @@ add_files()
 	done
 	IFS=$OIFS
 	# Handle symlinks
-	local FILES=$($FIND $fspec -type l -print|$TEE -a $metadir/files.tmp)
+	local FILES=$(${__find} $fspec -type l -print|${__tee} -a $metadir/files.tmp)
 	OIFS=$IFS
 	IFS="
 	"
@@ -348,12 +348,12 @@ add_files()
 	do
 	    IFS=$OIFS
 	    if [ "$defperm" == "-" ]; then
-		    permlist=`$LS -l "$i" | $CUT -d " " -f 1`
+		    permlist=`${__ls} -l "$i" | ${__cut} -d " " -f 1`
 		    perm=$(compute_octal $permlist)
 	    else
 		    perm=$defperm
 	    fi
-	    local temp=`$LS -l "$i"|$CUT -d '>' -f 2`
+	    local temp=`${__ls} -l "$i"|${__cut} -d '>' -f 2`
 	    local symval=${temp# }
 	    fname=$(fix_fname "$i")
 	    echo "l $perm $owner $group ${topinstd}${slash}$fname $i ${pkgname}.${prodcat} symval($symval)" >>$idbfile
@@ -381,7 +381,7 @@ add_dir()
     [ "$topinstd" = "/" ] && topinstd=""
 	
     # Note that dir blablah is *not* added to $metadir/files.tmp
-    #local FILES=$($FIND $fspec -type d -print)
+    #local FILES=$(${__find} $fspec -type d -print)
     local FILES=$fspec
     OIFS=$IFS
     IFS="
@@ -390,7 +390,7 @@ add_dir()
     do
 	IFS=$OIFS
 	if [ "$defperm" == "-" ]; then
-		permlist=$($LS -ld "$i" | $CUT -d " " -f 1)
+		permlist=$(${__ls} -ld "$i" | ${__cut} -d " " -f 1)
 		perm=$(compute_octal $permlist)
 	else
 		perm=$defperm
@@ -460,16 +460,16 @@ fetch_depends()
 {
     local reqidx=0
     local havedep=0
-    [ -r ${depends} ] && $CAT ${depends} > ${depends}_all
-    [ -r ${depends}_auto ] && $CAT ${depends}_auto >> ${depends}_all
+    [ -r ${depends} ] && ${__cat} ${depends} > ${depends}_all
+    [ -r ${depends}_auto ] && ${__cat} ${depends}_auto >> ${depends}_all
     # Are there any deps we should ignore?
     if [ -n "$ignore_deps" ]; then
 	local j
 	local cmd
 	for j in $ignore_deps
 	do
-	    cmd="$(echo $j | $SED -e 's;\.;\\\.;g')"
-	    $GSED -i "/$cmd/d" ${depends}_all
+	    cmd="$(echo $j | ${__sed} -e 's;\.;\\\.;g')"
+	    ${__gsed} -i "/$cmd/d" ${depends}_all
 	done
     fi
     if [ -r ${depends}_all ]; then
@@ -484,10 +484,10 @@ fetch_depends()
 		# Now if $deplen is longer than the same string with all dots removed
 		# then we know there was more than one dot and we can assume it's
 		# not an internal depend
-		if [ $deplen -gt "$(/bin/echo -n "$reqpkg" | $TR -d '.' | wc -c)" ]; then
+		if [ $deplen -gt "$(/bin/echo -n "$reqpkg" | ${__tr} -d '.' | wc -c)" ]; then
 		    # External depend
 		    # Grab version
-		    nver="$($SHOWPRODS -n $reqpkg | $GREP $reqpkg | $AWK '{ print $3 }')"
+		    nver="$($SHOWPRODS -n $reqpkg | ${__grep} $reqpkg | ${__awk} '{ print $3 }')"
 		    req="$reqpkg $nver maxint"
 		    havedep=1
 		else
@@ -587,10 +587,10 @@ fetch_ops()
 do_strip_bin()
 {
     echo "Stripping ELF binaries..."
-    for f in `$FIND . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec $FILE {} \; | \
-	$GREP -v ' dynamic lib ' | \
-	$SED -n -e 's/^\(.*\):[	]*ELF.*\(not stripped\).*/\1/p'`; do
-	$STRIP $strip_elf_args $f || :
+    for f in `${__find} . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec ${__file} {} \; | \
+	${__grep} -v ' dynamic lib ' | \
+	${__sed} -n -e 's/^\(.*\):[	]*ELF.*\(not stripped\).*/\1/p'`; do
+	${__strip} $strip_elf_args $f || :
     done
 } 
 
@@ -602,10 +602,10 @@ do_strip_shared()
     # Strip ELF shared objects (see brp-strip-shared from RPM)
     # Please note we don't restrict our search to executable files because
     # our libraries are not (should not be, at least) +x.
-    for f in `$FIND . -type f -a -exec $FILE {} \; | \
+    for f in `${__find} . -type f -a -exec ${__file} {} \; | \
 	grep ' dynamic lib ' | \
-	$SED -n -e 's/^\(.*\):[	]*ELF.*\(not stripped\).*/\1/p'`; do
-	$STRIP $strip_shared_args $f
+	${__sed} -n -e 's/^\(.*\):[	]*ELF.*\(not stripped\).*/\1/p'`; do
+	${__strip} $strip_shared_args $f
     done
 }
 
@@ -615,10 +615,10 @@ do_strip_static()
 {
     echo "Stripping static archives..."
     # Strip static libraries. (see brp-strip-static-archive from RPM)
-    for f in `$FIND . -type f -a -exec $FILE {} \; | \
-	$GREP 'current ar archive' | \
-	$SED -n -e 's/^\(.*\):[	]*current ar archive .*/\1/p'`; do
-	$STRIP $strip_static_args $f
+    for f in `${__find} . -type f -a -exec ${__file} {} \; | \
+	${__grep} 'current ar archive' | \
+	${__sed} -n -e 's/^\(.*\):[	]*current ar archive .*/\1/p'`; do
+	${__strip} $strip_static_args $f
     done
 }
 
@@ -654,7 +654,7 @@ create_idb()
     done
     if [ -r ${metadir}/${rn} ]; then
 	local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
-	$MKDIR -p $relmetadir
+	${__mkdir} -p $relmetadir
 	echo "" > ${relmetadir}/${topdir}.txt
     fi
     if [ -d "${stagedir}${metainstalldir}relnotes" ]; then # We have releasenotes, add them to idb file
@@ -670,7 +670,7 @@ create_idb()
     echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb" >> $metadir/files.tmp
     echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec" >> $metadir/files.tmp
 
-    $SORT +4u -6 < $idbfile > $metadir/idbtemp
+    ${__sort} +4u -6 < $idbfile > $metadir/idbtemp
     lines=$(wc -l < $metadir/idbtemp)
     if [ ! -z "$firstop" ]; then
 	echo "$(head -1 $metadir/idbtemp) $firstop" > $metadir/idbtemp2
@@ -685,7 +685,7 @@ create_idb()
     else
 	mv $metadir/idbtemp2 $idbfile
     fi
-    $RM -f $metadir/idbtemp $metadir/idbtemp2
+    ${__rm} -f $metadir/idbtemp $metadir/idbtemp2
 }
 
 # create_spec(): Create the .spec file.
@@ -711,9 +711,9 @@ create_spec()
 	spec_img_header ${pctop[$i]} "${pdtop[$i]}" $version-$pkgver >> $specfile
 	while [ "$pcidx" -lt "$pcsize" ]
 	do
-	    rv=`$EXPR match "${pc[$pcidx]}" ''${pctop[$i]}\\\.''`
+	    rv=`${__expr} match "${pc[$pcidx]}" ''${pctop[$i]}\\\.''`
 	    if [ ! "$rv" -eq 0 ]; then # We got a hit!
-		spec_subsys_header ${pctop[$i]} `echo ${pc[$pcidx]}|$CUT -d . -f 2` "${pd[$pcidx]}" "${ps[$pcidx]}" >> $specfile
+		spec_subsys_header ${pctop[$i]} `echo ${pc[$pcidx]}|${__cut} -d . -f 2` "${pd[$pcidx]}" "${ps[$pcidx]}" >> $specfile
 		# Add 'replaces' statements
 		spec_subsys_replaces self >> $specfile
 		replacepkgsize=${#replacepkg[@]}
@@ -777,16 +777,16 @@ make_dist()
 
     local sbase=${stagedir}${topinstalldir}
     local disttmp=/tmp/disttmp$$
-    $MKDIR $disttmp
+    ${__mkdir} $disttmp
 
     local dfile=$(_upls $distfile)
 
     $GENDIST $GENDIST_OPTS -rbase $topinstalldir -sbase $sbase -idb $idbfile -spec $specfile -dist $disttmp
     setdir $disttmp
-    $VTAR -cf $distdir/$dfile $pkgname*
+    ${__vtar} -cf $distdir/$dfile $pkgname*
 
     setdir stage
-    $RM -rf $disttmp
+    ${__rm} -rf $disttmp
     echo "Done. Package was created as $dfile"
 }
 
@@ -866,9 +866,9 @@ parse_def()
                 else # Perhaps we hit 'files'?
                     if [ "${line:0:5}" == "files" ]; then
                         triplet="${line:6:((${#line}-5-2))}"
-                        defaultperms=$(_upls $(echo $triplet | $AWK -F, '{ print $1 }'))
-                        defaultuid=$(_upls $(echo $triplet | $AWK -F, '{ print $2 }'))
-                        defaultgid=$(_upls $(echo $triplet | $AWK -F, '{ print $3 }'))
+                        defaultperms=$(_upls $(echo $triplet | ${__awk} -F, '{ print $1 }'))
+                        defaultuid=$(_upls $(echo $triplet | ${__awk} -F, '{ print $2 }'))
+                        defaultgid=$(_upls $(echo $triplet | ${__awk} -F, '{ print $3 }'))
                         foundfiles=1
                     else
                         if [ $foundfiles -eq 1 ]; then # We already found the 'files' line so this must be the filelist
@@ -906,24 +906,24 @@ check_unpackaged()
 {
     local upf
     local i
-    $FIND . -type f -print|$SED -e 's/\.\///g' > $tmpdir/files.tmp
-    $FIND . -type l -print|$SED -e 's/\.\///g' >> $tmpdir/files.tmp
-#    $FIND . -type d -print|$SED -e 's/\.\///g'|$GREP -v '^\.' >> $tmpdir/files.tmp
-    $SORT $metadir/files.tmp|$UNIQ > $tmpdir/f1
-    $SORT $tmpdir/files.tmp > $tmpdir/f2
-    upf="$($CAT $tmpdir/f1 $tmpdir/f2 | $SORT | $UNIQ -u)"
+    ${__find} . -type f -print|${__sed} -e 's/\.\///g' > $tmpdir/files.tmp
+    ${__find} . -type l -print|${__sed} -e 's/\.\///g' >> $tmpdir/files.tmp
+#    ${__find} . -type d -print|${__sed} -e 's/\.\///g'|${__grep} -v '^\.' >> $tmpdir/files.tmp
+    ${__sort} $metadir/files.tmp|${__uniq} > $tmpdir/f1
+    ${__sort} $tmpdir/files.tmp > $tmpdir/f2
+    upf="$(${__cat} $tmpdir/f1 $tmpdir/f2 | ${__sort} | ${__uniq} -u)"
     if [ ! -z "$upf" ]; then
 	echo "There are unpackaged files in the stagedir:"
 	for i in $upf
 	do
 	    echo "${indent4}${i}"
 	done
-        $RM -f $tmpdir/f1 $tmpdir/f2
+        ${__rm} -f $tmpdir/f1 $tmpdir/f2
 	if [ "$ignore_unpackaged_files" -eq 0 ]; then
 	    error $E_UNPACKAGED_FILES check_unpackaged
 	fi
     fi
-    $RM -f $tmpdir/f1 $tmpdir/f2
+    ${__rm} -f $tmpdir/f1 $tmpdir/f2
 }
 
 # auto_src(): Automatically place any patches and srcfiles into the stagedir
@@ -937,7 +937,7 @@ auto_src()
     local numpatch=${#patch[@]}
     local pnum=0
     if [ "$numpatch" -gt 0 ]; then
-	$MKDIR -p $distsrcdir
+	${__mkdir} -p $distsrcdir
 	for ((pnum=0; pnum < $numpatch; pnum++))
 	do
 	    if [ ! -z ${patch[$pnum]} ]; then # They didn't give us an empty string
@@ -947,7 +947,7 @@ auto_src()
 		fi # We are now sure that $patch[$pnum] contains file with absolute path
 		if [ -r ${patch[$pnum]} ]; then # file is readable
 		    echo "Copying patch[$pnum] - ${patch[$pnum]}"
-		    $CP ${patch[$pnum]} $distsrcdir
+		    ${__cp} ${patch[$pnum]} $distsrcdir
 		else
 		    error $E_BAD_FILE patch
 		fi
@@ -958,7 +958,7 @@ auto_src()
     fi
     # Add sourcecode
     if [ $include_source -eq 1 ]; then
-	$MKDIR -p $distsrcdir
+	${__mkdir} -p $distsrcdir
 	local numsource=${#source[@]}
 	local snum=0
 	for ((snum=0; $snum < $numsource; snum++))
@@ -969,7 +969,7 @@ auto_src()
 	    fi # We are now sure that ${source[$snum]} contains file with absolute path
 	    if [ -r ${source[$snum]} ]; then
 		echo "Copying source[$snum] - ${source[$snum]}"
-		$CP ${source[$snum]} $distsrcdir
+		${__cp} ${source[$snum]} $distsrcdir
 	    fi
 	done
     fi
@@ -991,14 +991,14 @@ rel_conf_sub()
     # Duplicated code from auto_rel :(
     # compute configure info for relnotes
     local cf="$(_upls $configure_args)"
-    [ -n "$ac_overrides" ] && local aco="$(echo $ac_overrides | $TR ' ' '\n' | $AWK '{ printf "%s \\\\ \\n",$0 }')"
-    local temp_fullcf="$(echo "$__configure $cf" | $AWK '{ printf "%s\\n",$0 }')"
+    [ -n "$ac_overrides" ] && local aco="$(echo $ac_overrides | ${__tr} ' ' '\n' | ${__awk} '{ printf "%s \\\\ \\n",$0 }')"
+    local temp_fullcf="$(echo "$__configure $cf" | ${__awk} '{ printf "%s\\n",$0 }')"
     temp_fullcf="$(echo "${aco}${temp_fullcf}")"
     # Remove trailing whitespace and \n
     local fullcf="${temp_fullcf%\\*}"
     # end
     if [ -r ${metadir}/${rn} ]; then
-	$SED -e "s;%%CONFIGURE%%;$fullcf;g" \
+	${__sed} -e "s;%%CONFIGURE%%;$fullcf;g" \
 	    ${metadir}/${rn} > ${metadir}/${rn}.txt
     fi
 }
@@ -1031,14 +1031,14 @@ auto_rel()
 	local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
 	# compute configure info for relnotes
 	local cf="$(_upls $configure_args)"
-	[ -n "$ac_overrides" ] && local aco="$(for ar in $ac_overrides; do echo $ar; done | $AWK '{ printf "%s \\\\ \\n",$0 }')"
-	local temp_fullcf="$(echo "$__configure $cf" | $AWK '{ printf "%s\\n",$0 }')"
+	[ -n "$ac_overrides" ] && local aco="$(for ar in $ac_overrides; do echo $ar; done | ${__awk} '{ printf "%s \\\\ \\n",$0 }')"
+	local temp_fullcf="$(echo "$__configure $cf" | ${__awk} '{ printf "%s\\n",$0 }')"
 	temp_fullcf="$(echo "${aco}${temp_fullcf}")"
 	# Remove trailing whitespace and \n
 	local fullcf="${temp_fullcf%\\*}"
 	# end
 	if [ $mipspro -eq 0 ]; then
-	    local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')" 
+	    local compiler_temp="$(gcc --version 2>&1 | ${__sed} -n '1,1p')" 
 	    local compiler="gcc ${compiler_temp##* }"
 	else # not gcc
 	    if [ "$_os" = "irix53" ]; then
@@ -1048,14 +1048,14 @@ auto_rel()
 	    fi
 	    if [ "$CXX" = "g++" ]; then
 		# SGI cc with gnu g++
-		local compiler_temp="$(g++ --version 2>&1 | $SED -n '1,1p')" 
-		local compiler="$((echo $compiler; echo g++ ${compiler_temp##* }) | $AWK '{ printf "%s\\n",$0 }')"
+		local compiler_temp="$(g++ --version 2>&1 | ${__sed} -n '1,1p')" 
+		local compiler="$((echo $compiler; echo g++ ${compiler_temp##* }) | ${__awk} '{ printf "%s\\n",$0 }')"
 		local compiler="${compiler%\\*}"
 	    fi
 	fi
-	local pkgnam_temp=$($GREP 'pkgname=' $metadir/pkgdef)
+	local pkgnam_temp=$(${__grep} 'pkgname=' $metadir/pkgdef)
 	local pkgnam=$(_upls ${pkgnam_temp#pkgname=*})
-	local vendor_temp=$($GREP 'pkgvendor=' $metadir/pkgdef)
+	local vendor_temp=$(${__grep} 'pkgvendor=' $metadir/pkgdef)
 	local vendor=$(_upls ${vendor_temp#pkgvendor=*})
 	local packager="${pkgedby} <${email}>"
 	# Compute SHA1 sums for all source entries
@@ -1076,22 +1076,22 @@ auto_rel()
 	    # into relnotes we cd first then run sha1sum
 	    path="${source[$s]%/*}" # Extract path part
 	    file="${source[$s]##*/}" # Extract filename part
-	    (cd "$path"; $SHA1SUM "$file") >> $metadir/sums
+	    (cd "$path"; ${__sha1sum} "$file") >> $metadir/sums
 	done
-	[ -r "$metadir/sums" ] && temp_source_sha1sum="$(cat $metadir/sums | $AWK '{ printf "%s\\n",$0 }')"
+	[ -r "$metadir/sums" ] && temp_source_sha1sum="$(cat $metadir/sums | ${__awk} '{ printf "%s\\n",$0 }')"
 	source_sha1sum="${temp_source_sha1sum%\\*}"
 	# End of SHA1 sum computing
-	local temp_extracted_env="$($SED -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|$GREP ^ENV|$SED -e 's/ENV //g'|$AWK '{ printf "%s\\n",$0 }' && $RM -f /tmp/env.sh)"
+	local temp_extracted_env="$(${__sed} -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|${__grep} ^ENV|${__sed} -e 's/ENV //g'|${__awk} '{ printf "%s\\n",$0 }' && ${__rm} -f /tmp/env.sh)"
 	# Remove trailing \n
 	local extracted_env="${temp_extracted_env%\\*}"
 	if [ -r ${depends}_all ]; then
-	    local temp_deps="$($CAT ${depends}_all | $GREP -v $pkgnam | $GREP $pkgprefix | $SED -e "s/.*${pkgprefix}//" | $CUT -d. -f1 | $SORT -u | $AWK '{ printf "%s\\n",$0 }')"
+	    local temp_deps="$(${__cat} ${depends}_all | ${__grep} -v $pkgnam | ${__grep} $pkgprefix | ${__sed} -e "s/.*${pkgprefix}//" | ${__cut} -d. -f1 | ${__sort} -u | ${__awk} '{ printf "%s\\n",$0 }')"
 	else
 	    local temp_deps=""
 	fi
 	local deps="${temp_deps%\\*}"
-	$MKDIR -p $relmetadir
-	$SED -e "s;%%PKGNAME%%;${pkgnam};g" \
+	${__mkdir} -p $relmetadir
+	${__sed} -e "s;%%PKGNAME%%;${pkgnam};g" \
 	    -e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
 	    -e "s;%%CONFIGURE%%;${fullcf};g" \
 	    -e "s;%%COMPILER%%;${compiler};g" \
@@ -1113,9 +1113,9 @@ auto_rel()
 auto_dist()
 {
     local distmetadir=${stagedir}${metainstalldir}dist/$topdir-$version-$pkgver
-    $MKDIR -p $distmetadir
-    $CP $idbfile $distmetadir
-    $CP $specfile $distmetadir
+    ${__mkdir} -p $distmetadir
+    ${__cp} $idbfile $distmetadir
+    ${__cp} $specfile $distmetadir
 }
 
 # dep_pkg_name: Given a filename it will look it up and find the subsystemname
@@ -1129,8 +1129,8 @@ dep_pkg_name()
     do
 	for i in $files
 	do
-	    [ -L "$i" -a $deps_resolve_symlinks -eq 1 ] && i=$(${READLINK} -f "$i")
-	    pkg=$(${GREP} " ${i:1}$" $showfilescache 2>/dev/null)
+	    [ -L "$i" -a $deps_resolve_symlinks -eq 1 ] && i=$(${__readlink} -f "$i")
+	    pkg=$(${__grep} " ${i:1}$" $showfilescache 2>/dev/null)
 	    if [ -n "$pkg" ]; then
 		#echo "Found $i in $pkg" >> /tmp/depdebug
 		echo "$pkg"
@@ -1150,46 +1150,46 @@ extract_deps()
     cd ${stagedir}${topinstalldir}
 
     # Grab the filelist and classify files
-    local filelist=$($GREP $1 $idbfile | $AWK '{ print $6 }')
-    local exelist=$(echo $filelist | $XARGS $FILE | $EGREP -v ":.* (commands|script) " | $GREP ":.*executable" | $CUT -d: -f1)
-    local scriptlist=$(echo $filelist | $XARGS $FILE | $EGREP ":.* (commands|script) " | $CUT -d: -f1)
-    local liblist=$(echo $filelist | $XARGS $FILE | $GREP ":.*dynamic lib" | $CUT -d: -f1)
+    local filelist=$(${__grep} $1 $idbfile | ${__awk} '{ print $6 }')
+    local exelist=$(echo $filelist | ${__xargs} ${__file} | ${__egrep} -v ":.* (commands|script) " | ${__grep} ":.*executable" | ${__cut} -d: -f1)
+    local scriptlist=$(echo $filelist | ${__xargs} ${__file} | ${__egrep} ":.* (commands|script) " | ${__cut} -d: -f1)
+    local liblist=$(echo $filelist | ${__xargs} ${__file} | ${__grep} ":.*dynamic lib" | ${__cut} -d: -f1)
 
     # Compute dependencies for executables
     if [ -n "$exelist" ]; then
 	for f in $exelist; do
 	    [ -r $f -a -x $f ] || continue
 	    # Generic Irix ldd
-	    # $LDD $f | $GREP \= | $AWK -F'	' '{ print $3 }'  | $CUT -d\  -f2
+	    # ${__ldd} $f | ${__grep} \= | ${__awk} -F'	' '{ print $3 }'  | ${__cut} -d\  -f2
 	    # Ariel Faigons perl5 ldd
-	    $LDD $f | $GREP \= | $GREP -v 'not found' | $SED -e 's/.*=> //g'
-	done | $SORT -u | dep_pkg_name | $AWK '{ print $4 }' | $SORT -u
+	    ${__ldd} $f | ${__grep} \= | ${__grep} -v 'not found' | ${__sed} -e 's/.*=> //g'
+	done | ${__sort} -u | dep_pkg_name | ${__awk} '{ print $4 }' | ${__sort} -u
     fi
     # Compute dependencies for dynamic libraries
     if [ -n "$liblist" ]; then
 	for f in $liblist; do
 	    [ -r $f ] || continue
 	    # Generic Irix ldd
-	    #$LDD $f | $GREP \= | $AWK -F'	' '{ print $3 }'  | $CUT -d\  -f2
+	    #${__ldd} $f | ${__grep} \= | ${__awk} -F'	' '{ print $3 }'  | ${__cut} -d\  -f2
 	    # Ariel Faigon's perl5 ldd
-	    $LDD $f | $GREP \= | $GREP -v 'not found' | $SED -e 's/.*=> //g'
-	done | $SORT -u | dep_pkg_name | $AWK '{ print $4 }' | $SORT -u
+	    ${__ldd} $f | ${__grep} \= | ${__grep} -v 'not found' | ${__sed} -e 's/.*=> //g'
+	done | ${__sort} -u | dep_pkg_name | ${__awk} '{ print $4 }' | ${__sort} -u
     fi
     # Compute dependencies for scripts
     if [ -n "$scriptlist" ]; then
 	for f in $scriptlist; do
 	    [ -r $f -a -x $f ] || continue
-	    interp="$($HEAD -n 1 $f | $CUT -d\! -f2- | $SED -e 's/ -.*//')"
+	    interp="$(${__head} -n 1 $f | ${__cut} -d\! -f2- | ${__sed} -e 's/ -.*//')"
 	    if [ -L "$interp" ]; then
-		echo $($FILE -h "$interp" | $SED -e 's/.* to //')
+		echo $(${__file} -h "$interp" | ${__sed} -e 's/.* to //')
 	    else
-		if [ "$(echo $interp | $CUT -d' ' -f1)" = "/usr/bin/env" ]; then
+		if [ "$(echo $interp | ${__cut} -d' ' -f1)" = "/usr/bin/env" ]; then
 		    echo "/usr/bin/env"
 		else
 		    echo $interp
 		fi
 	    fi
-	done | $SORT -u | dep_pkg_name | $AWK '{ print $4 }' | $SORT -u
+	done | ${__sort} -u | dep_pkg_name | ${__awk} '{ print $4 }' | ${__sort} -u
     fi
 }
 
@@ -1208,15 +1208,15 @@ auto_deps()
     # Populate showfiles cache
     $SHOWFILES -l > $showfilescache
 
-    subsystems="$($AWK '{ print $7 }' < $idbfile | $SORT -u | $GREP sw)"
+    subsystems="$(${__awk} '{ print $7 }' < $idbfile | ${__sort} -u | ${__grep} sw)"
     for i in $subsystems
     do
 	deps="$(extract_deps $i)"
 	for j in $deps
 	do
-	    echo "${i#*.} $j $($SHOWPRODS -n $j | $GREP $j | $AWK '{ print $3 }') maxint"
+	    echo "${i#*.} $j $($SHOWPRODS -n $j | ${__grep} $j | ${__awk} '{ print $3 }') maxint"
 	done
-    done | $SORT -u | grep $pkgprefix > ${depends}_auto
+    done | ${__sort} -u | grep $pkgprefix > ${depends}_auto
     rm -f $showfilescache
 }
 

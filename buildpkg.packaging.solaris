@@ -9,7 +9,7 @@ PKGMK=/usr/bin/pkgmk
 PKGTRANS=/usr/bin/pkgtrans
 
 # Override generic location
-STRIP=/usr/ccs/bin/strip
+__strip=/usr/ccs/bin/strip
 # /usr/ccs/bin/strip destroys the symbol table in static archives
 # So this is disabled by default
 dostrip_static=0
@@ -34,7 +34,7 @@ pkgedby="Tom G. Christensen"
 email=swpkg@jupiterrise.com
 
 arch=`uname -p`
-os=sunos`$UNAME -r`
+os=sunos`${__uname} -r`
 # Courtesy of nba (see dm2conv/solaris/mkpkg.sh)
 #case $os in
 #5.[0123456]|5.5.1)
@@ -125,13 +125,13 @@ pack_info()
     fi
     local secname=$1
 
-    local pstamp="$os-$($UNAME -n)`date '+%Y%m%d%H%M'`"
+    local pstamp="$os-$(${__uname} -n)`date '+%Y%m%d%H%M'`"
 
     # Check length of pkgname and name to make sure we're within limits
     [ ${#pkgname} -gt 9 ] && error $E_SVR4_PKG_OVERFLOW pack_info
     [ ${#name} -gt 256 ] && error $E_SVR4_NAME_OVERFLOW pack_info
 
-    $SED -e "s#%%pkgname%%#$pkgname#g" \
+    ${__sed} -e "s#%%pkgname%%#$pkgname#g" \
 	-e "s#%%version%%#$version#g" \
 	-e "s#%%pkgcat%%#$pkgcat#g" \
 	-e "s#%%pkgvendor%%#$pkgvendor - packaged by $pkgedby#g" \
@@ -153,9 +153,9 @@ list_pkgs()
     local i
     local it
     # We can't rely on shell expansion here since we would be burned if * is empty!
-    for i in $($LS -1 $metadir/prototype.* 2>/dev/null)
+    for i in $(${__ls} -1 $metadir/prototype.* 2>/dev/null)
     do
-	it=$($BASENAME $i)
+	it=$(${__basename} $i)
 	echo ${it##prototype.}
     done
 }
@@ -248,7 +248,7 @@ add_proto()
     local fspec=$(_upls $4)
     local secname=$5
 
-    local FILES=$($FIND $fspec -type f -print|$TEE -a $metadir/files.tmp)
+    local FILES=$(${__find} $fspec -type f -print|${__tee} -a $metadir/files.tmp)
     OIFS=$IFS
     IFS="
     "
@@ -256,7 +256,7 @@ add_proto()
     do
 	IFS=$OIFS
 	if [ "$defperm" == "-" ]; then
-	    permlist=$($LS -l "$i" | $CUT -d " " -f 1)
+	    permlist=$(${__ls} -l "$i" | ${__cut} -d " " -f 1)
 	    perm=$(compute_octal $permlist)
 	else
 	    perm=$defperm
@@ -265,7 +265,7 @@ add_proto()
     done
     IFS=$OIFS
     # Handle symlinks
-    local FILES=$($FIND $fspec -type l -print|$TEE -a $metadir/files.tmp)
+    local FILES=$(${__find} $fspec -type l -print|${__tee} -a $metadir/files.tmp)
     OIFS=$IFS
     IFS="
     "
@@ -273,16 +273,16 @@ add_proto()
     do
 	IFS=$OIFS
         if [ "$defperm" == "-" ]; then
-            permlist=$($LS -l "$i" | $CUT -d " " -f 1)
+            permlist=$(${__ls} -l "$i" | ${__cut} -d " " -f 1)
             perm=$(compute_octal $permlist)
         fi
-	local temp=`$LS -l "$i"|$CUT -d '>' -f 2`
+	local temp=`${__ls} -l "$i"|${__cut} -d '>' -f 2`
 	local symval=${temp# }
 	echo "s none $i=$symval	$perm $owner $group" >> $metadir/prototype.$secname
     done
     IFS=$OIFS
     # Handle directories
-    local FILES=$($FIND $fspec -type d -print|$TEE -a $metadir/files.tmp)
+    local FILES=$(${__find} $fspec -type d -print|${__tee} -a $metadir/files.tmp)
     OIFS=$IFS
     IFS="
     "
@@ -290,7 +290,7 @@ add_proto()
     do
 	IFS=$OIFS
 	if [ "$defperm" == "-" ]; then
-            permlist=$($LS -ld "$i" | $CUT -d " " -f 1)
+            permlist=$(${__ls} -ld "$i" | ${__cut} -d " " -f 1)
             perm=$(compute_octal $permlist)
         else
 	    perm=$defperm
@@ -315,7 +315,7 @@ add_dir()
     local secname=$5
     
     if [ "$defperm" == "-" ]; then
-	permlist=$($LS -ld "$dir" | $CUT -d " " -f 1)
+	permlist=$(${__ls} -ld "$dir" | ${__cut} -d " " -f 1)
 	perm=$(compute_octal $permlist)
     else
 	perm=$defperm
@@ -342,23 +342,23 @@ auto_rel()
 	local relmetadir=${stagedir}${metainstalldir}relnotes/$secname-$version-$pkgver
 	### compute configure info for relnotes
 	local cf="$(_upls $configure_args)"
-	[ -n "$ac_overrides" ] && local aco="$(for ar in $ac_overrides; do echo $ar; done | $AWK '{ printf "%s \\\\ \\n",$0 }')"
-	local temp_fullcf="$(echo "$__configure $cf" | $AWK '{ printf "%s\\n",$0 }')"
+	[ -n "$ac_overrides" ] && local aco="$(for ar in $ac_overrides; do echo $ar; done | ${__awk} '{ printf "%s \\\\ \\n",$0 }')"
+	local temp_fullcf="$(echo "$__configure $cf" | ${__awk} '{ printf "%s\\n",$0 }')"
 	temp_fullcf="$(echo "${aco}${temp_fullcf}")"
 	# Remove trailing whitespace and \n
 	local fullcf="${temp_fullcf%\\*}"
 	###
 	### compute compiler info for relnotes
 	if [ $suncc -eq 0 ]; then
-	    #local compiler_temp="$(gcc --version 2>&1 | $SED -n '1,1p')"
+	    #local compiler_temp="$(gcc --version 2>&1 | ${__sed} -n '1,1p')"
 	    #local compiler="gcc ${compiler_temp##* }"
-	    local compiler="$(gcc -v 2>&1 | $SED -n '/^gcc/ s/ version//p')"
+	    local compiler="$(gcc -v 2>&1 | ${__sed} -n '/^gcc/ s/ version//p')"
 	else # not gcc
 	    local compiler="$(cc -version 2>&1)"
 	    if [ "$CXX" = "g++" ]; then
 		# SUN cc with gnu g++
-		local compiler_temp="$(g++ --version 2>&1 | $SED -n '1,1p')"
-		local compiler="$((echo $compiler; echo g++ ${compiler_temp##* }) | $AWK '{ printf "%s\\n",$0 }')"
+		local compiler_temp="$(g++ --version 2>&1 | ${__sed} -n '1,1p')"
+		local compiler="$((echo $compiler; echo g++ ${compiler_temp##* }) | ${__awk} '{ printf "%s\\n",$0 }')"
 		local compiler="${compiler%\\*}"
 	    fi
 	fi
@@ -387,23 +387,23 @@ auto_rel()
 	    # into relnotes we cd first then run sha1sum
 	    path="${source[$s]%/*}" # Extract path part
 	    file="${source[$s]##*/}" # Extract filename part
-	    (cd "$path"; $SHA1SUM "$file") >> $metadir/sums.${secname}
+	    (cd "$path"; ${__sha1sum} "$file") >> $metadir/sums.${secname}
 	    let s=s+1
 	done
-	[ -r "$metadir/sums.${secname}" ] && temp_source_sha1sum="$(cat $metadir/sums.${secname} | $AWK '{ printf "%s\\n",$0 }')"
+	[ -r "$metadir/sums.${secname}" ] && temp_source_sha1sum="$(cat $metadir/sums.${secname} | ${__awk} '{ printf "%s\\n",$0 }')"
 	source_sha1sum="${temp_source_sha1sum%\\*}"
 	### End of SHA1 sum computing
 	### Extract environtment variables
-	local temp_extracted_env="$($SED -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|$GREP ^ENV|$SED -e 's/ENV //g'|$AWK '{ printf "%s\\n",$0 }' && $RM -f /tmp/env.sh)"
+	local temp_extracted_env="$(${__sed} -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|${__grep} ^ENV|${__sed} -e 's/ENV //g'|${__awk} '{ printf "%s\\n",$0 }' && ${__rm} -f /tmp/env.sh)"
 	# Remove trailing \n
 	local extracted_env="${temp_extracted_env%\\*}"
 	###
 	### Add dependencies
-	local temp_deps="$($CAT $metadir/depend.$secname.all | $SED -e '/^$/d;/^	/d' | $SORT -u | $AWK '{ printf "%s\\n",$0 }')"
+	local temp_deps="$(${__cat} $metadir/depend.$secname.all | ${__sed} -e '/^$/d;/^	/d' | ${__sort} -u | ${__awk} '{ printf "%s\\n",$0 }')"
 	local deps="${temp_deps%\\*}"
 	###
-	$MKDIR -p $relmetadir
-	$GSED -e "s;%%PKGNAME%%;${pkgnam};g" \
+	${__mkdir} -p $relmetadir
+	${__gsed} -e "s;%%PKGNAME%%;${pkgnam};g" \
 	    -e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
 	    -e "s;%%CONFIGURE%%;${fullcf};g" \
 	    -e "s;%%COMPILER%%;${compiler};g" \
@@ -436,8 +436,8 @@ auto_dir()
     local i
     local j
 
-    fdirs=$($AWK '/^[fs]/ { print $3 }' $metadir/prototype.$secname | $SED -e 's,\(.*\)=.*$,\1,' | $SED -e 's,\(.*\)/.*$,\1,' | $SORT -u)
-    ddirs=$($AWK '/^d/ { print $3 }' $metadir/prototype.$secname | $SORT -u)
+    fdirs=$(${__awk} '/^[fs]/ { print $3 }' $metadir/prototype.$secname | ${__sed} -e 's,\(.*\)=.*$,\1,' | ${__sed} -e 's,\(.*\)/.*$,\1,' | ${__sort} -u)
+    ddirs=$(${__awk} '/^d/ { print $3 }' $metadir/prototype.$secname | ${__sort} -u)
 
     for i in $fdirs
     do
@@ -482,8 +482,8 @@ dep_pkg_name()
     do
         for i in $files
         do
-            [ -L "$i" -a $deps_resolve_symlinks -eq 1 ] && i=$(${READLINK} -f "$i")
-            pkg=$(pkgchk -l -p $i | $AWK '/^\t/ { print $1 }')
+            [ -L "$i" -a $deps_resolve_symlinks -eq 1 ] && i=$(${__readlink} -f "$i")
+            pkg=$(pkgchk -l -p $i | ${__awk} '/^\t/ { print $1 }')
             if [ -n "$pkg" -a $(echo $pkg | wc -l) -eq 1 ]; then
                 #echo "Found $i in $pkg" >> /tmp/depdebug
                 echo "$pkg"
@@ -505,42 +505,42 @@ extract_deps()
     cd ${stagedir}${topinstalldir}
 
     # Grab the filelist and classify files
-    local filelist=$($AWK '{ print $3 }' $metadir/prototype.$secname | $GREP '.')
-    local exelist=$(echo $filelist | $XARGS $FILE | $EGREP -v ":.* (commands|script)" | $GREP -v "ar archive" |  $GREP ":.*executable" | $CUT -d: -f1)
-    local scriptlist=$(echo $filelist | $XARGS $FILE | $EGREP ":.* (commands|script)" | $CUT -d: -f1)
-    local liblist=$(echo $filelist | $XARGS $FILE | $GREP -v "ar archive" | $GREP ":.*dynamic lib" | $CUT -d: -f1)
+    local filelist=$(${__awk} '{ print $3 }' $metadir/prototype.$secname | ${__grep} '.')
+    local exelist=$(echo $filelist | ${__xargs} ${__file} | ${__egrep} -v ":.* (commands|script)" | ${__grep} -v "ar archive" |  ${__grep} ":.*executable" | ${__cut} -d: -f1)
+    local scriptlist=$(echo $filelist | ${__xargs} ${__file} | ${__egrep} ":.* (commands|script)" | ${__cut} -d: -f1)
+    local liblist=$(echo $filelist | ${__xargs} ${__file} | ${__grep} -v "ar archive" | ${__grep} ":.*dynamic lib" | ${__cut} -d: -f1)
 
     # Compute dependencies for executables
     if [ -n "$exelist" ]; then
         for f in $exelist; do
             [ -r $f -a -x $f ] || continue
             # Generic Solaris ldd
-            $LDD $f | $GREP -v 'not found' | $AWK '/\=/ { print $3 }'
-        done | $SORT -u | dep_pkg_name | $SORT -u
+            ${__ldd} $f | ${__grep} -v 'not found' | ${__awk} '/\=/ { print $3 }'
+        done | ${__sort} -u | dep_pkg_name | ${__sort} -u
     fi
     # Compute dependencies for dynamic libraries
     if [ -n "$liblist" ]; then
         for f in $liblist; do
             [ -r $f ] || continue
             # Generic Solaris ldd
-            $LDD $f | $GREP -v 'not found' | $AWK '/\=/ { print $3 }'
-        done | $SORT -u | dep_pkg_name | $SORT -u
+            ${__ldd} $f | ${__grep} -v 'not found' | ${__awk} '/\=/ { print $3 }'
+        done | ${__sort} -u | dep_pkg_name | ${__sort} -u
     fi
     # Compute dependencies for scripts
     if [ -n "$scriptlist" ]; then
         for f in $scriptlist; do
             [ -r $f -a -x $f ] || continue
-            interp="$($HEAD -n 1 $f | $CUT -d\! -f2- | $SED -e 's/ -.*//')"
+            interp="$(${__head} -n 1 $f | ${__cut} -d\! -f2- | ${__sed} -e 's/ -.*//')"
             if [ -L "$interp" ]; then
-                echo $($FILE -h "$interp" | $SED -e 's/.* to //')
+                echo $(${__file} -h "$interp" | ${__sed} -e 's/.* to //')
             else
-                if [ "$(echo $interp | $CUT -d' ' -f1)" = "/usr/bin/env" ]; then
+                if [ "$(echo $interp | ${__cut} -d' ' -f1)" = "/usr/bin/env" ]; then
                     echo "/usr/bin/env"
                 else
                     echo $interp
                 fi
             fi
-        done | $SORT -u | dep_pkg_name | $SORT -u
+        done | ${__sort} -u | dep_pkg_name | ${__sort} -u
     fi
 }
 
@@ -558,13 +558,13 @@ auto_deps()
     local pkgname=$(get_pkgname $secname)
     local temp
 
-    deps="$(extract_deps $secname | $SORT -u)"
+    deps="$(extract_deps $secname | ${__sort} -u)"
     # We need to sort out any packages created from the same build
     # Internal deps *must* be recorded in a depend file instead
     for j in $(list_pkgs)
     do
 	temp=$(get_pkgname $j)
-	deps=$(echo $deps | $SED -e "/$temp/d")
+	deps=$(echo $deps | ${__sed} -e "/$temp/d")
     done
     # Parse any speciel depends
     # We don't do ignore_deps processing for these deps
@@ -572,7 +572,7 @@ auto_deps()
 	local extra_pkgname # Package that should have the depend
 	local extra_dep_pkgname # The name of depend (either a pkgname or a secname)
 	local extra_dep_version # version of the depend (or auto keyword)
-	$SED -n "/^$pkgname /p" $metadir/depend |
+	${__sed} -n "/^$pkgname /p" $metadir/depend |
 	while read extra_pkgname extra_dep_pkgname extra_dep_version
 	do
 	    local internal_dep=0
@@ -597,7 +597,7 @@ auto_deps()
 		fi
 		# Only for deps with $pkgprefix?
 		if [ $version_all_deps -eq 0 ]; then
-		    [ -n "$(echo $extra_dep_pkgname | $GREP $pkgprefix)" ] && echo -e "\t($arch) $extra_dep_version"
+		    [ -n "$(echo $extra_dep_pkgname | ${__grep} $pkgprefix)" ] && echo -e "\t($arch) $extra_dep_version"
 		else
 		    echo -e "\t($arch) $extra_dep_version"
 		fi
@@ -621,7 +621,7 @@ auto_deps()
 	    # create versioned_deps
 	    # Only for deps with $pkgprefix?
 	    if [ $version_all_deps -eq 0 ]; then
-		[ -n "$(echo $j | $GREP $pkgprefix)" ] && echo -e "\t($arch) $(pkgparam $j VERSION)"
+		[ -n "$(echo $j | ${__grep} $pkgprefix)" ] && echo -e "\t($arch) $(pkgparam $j VERSION)"
 	    else
 		echo -e "\t($arch) $(pkgparam $j VERSION)"
 	    fi
@@ -669,7 +669,7 @@ parse_def()
 		fi
 		;;
 	    *)
-		equalindex=$($EXPR index "$line" =)
+		equalindex=$(${__expr} index "$line" =)
 		if [ ! $equalindex -eq 0 ]; then
 		    case "${line:0:(($equalindex-1))}" in
 			'pkgname')
@@ -697,9 +697,9 @@ parse_def()
 		else # Perhaps we hit 'files'?
 		    if [ "${line:0:5}" == "files" ]; then
 			triplet="${line:6:((${#line}-5-2))}"
-			defaultperms=$(echo $triplet | $AWK -F, '{ print $1 }')
-			defaultuid=$(echo $triplet | $AWK -F, '{ print $2 }')
-			defaultgid=$(echo $triplet | $AWK -F, '{ print $3 }')
+			defaultperms=$(echo $triplet | ${__awk} -F, '{ print $1 }')
+			defaultuid=$(echo $triplet | ${__awk} -F, '{ print $2 }')
+			defaultgid=$(echo $triplet | ${__awk} -F, '{ print $3 }')
 			foundfiles=1
 			if [ $hasaddedpkginfo -eq 0 ]; then
 			    # start a new package
@@ -743,24 +743,24 @@ check_unpackaged()
     local i
     local indent4="    "
 
-    $FIND . -type f -print|$SED -e 's/\.\///g' > $tmpdir/files.tmp
-    $FIND . -type l -print|$SED -e 's/\.\///g' >> $tmpdir/files.tmp
-    $FIND . -type d -print|$SED -e 's/\.\///g'|$GREP -v '^\.' >> $tmpdir/files.tmp
-    $SORT $metadir/files.tmp|$UNIQ > $tmpdir/f1
-    $SORT $tmpdir/files.tmp > $tmpdir/f2
-    upf="$($CAT $tmpdir/f1 $tmpdir/f2 | $SORT | $SED -e '/^relnotes/d' | $UNIQ -u)"
+    ${__find} . -type f -print|${__sed} -e 's/\.\///g' > $tmpdir/files.tmp
+    ${__find} . -type l -print|${__sed} -e 's/\.\///g' >> $tmpdir/files.tmp
+    ${__find} . -type d -print|${__sed} -e 's/\.\///g'|${__grep} -v '^\.' >> $tmpdir/files.tmp
+    ${__sort} $metadir/files.tmp|${__uniq} > $tmpdir/f1
+    ${__sort} $tmpdir/files.tmp > $tmpdir/f2
+    upf="$(${__cat} $tmpdir/f1 $tmpdir/f2 | ${__sort} | ${__sed} -e '/^relnotes/d' | ${__uniq} -u)"
     if [ ! -z "$upf" ]; then
 	echo "There are unpackaged files in the stagedir:"
 	for i in $upf
 	do
 	    echo "${indent4}${i}"
 	done
-	$RM -f $tmpdir/f1 $tmpdir/f2
+	${__rm} -f $tmpdir/f1 $tmpdir/f2
 	if [ "$ignore_unpackaged_files" -eq 0 ]; then
 	    error $E_UNPACKAGED_FILES check_unpackaged
 	fi
     fi
-    $RM -f $tmpdir/f1 $tmpdir/f2
+    ${__rm} -f $tmpdir/f1 $tmpdir/f2
 }
 
 # get_pkgname(): Extract pkgname (PKG) from a pkginfo file
@@ -770,7 +770,7 @@ get_pkgname()
     local secname=$1
 
     if [ -r $metadir/pkginfo.$secname ]; then
-	local pn=$($GREP PKG $metadir/pkginfo.$secname)
+	local pn=$(${__grep} PKG $metadir/pkginfo.$secname)
 	local pname=$(_upls ${pn##PKG=})
 	echo $pname
     fi
@@ -782,7 +782,7 @@ get_pkgrev()
 {
     local secname=$1
 
-    local verfield="$($GREP VERSION $metadir/pkginfo.$secname|$SED -e 's/"//g')"
+    local verfield="$(${__grep} VERSION $metadir/pkginfo.$secname|${__sed} -e 's/"//g')"
     local secver=$(_upls ${verfield#*REV=})
     echo $secver
 }
@@ -793,7 +793,7 @@ get_pkgversion()
 {
     local secname=$1
 
-    local verfield="$($GREP VERSION $metadir/pkginfo.$secname|$SED -e 's/"//g')"
+    local verfield="$(${__grep} VERSION $metadir/pkginfo.$secname|${__sed} -e 's/"//g')"
     local secver=$(_upls ${verfield##VERSION=})
     echo $secver
 }
@@ -805,7 +805,7 @@ get_pkgdesc()
     local secname=$1
 
     if [ -r $metadir/pkginfo.$secname ]; then
-	local pd=$($GREP NAME $metadir/pkginfo.$secname)
+	local pd=$(${__grep} NAME $metadir/pkginfo.$secname)
 	local pdesc=$(_upls ${pd##NAME=})
 	echo $pdesc
     fi
@@ -818,7 +818,7 @@ get_pkgvendor()
     local secname=$1
 
     if [ -r $metadir/pkginfo.$secname ]; then
-	local pv=$($SED -n 's/VENDOR=\(.*\) - .*/\1/p' $metadir/pkginfo.$secname | $TR -d '"')
+	local pv=$(${__sed} -n 's/VENDOR=\(.*\) - .*/\1/p' $metadir/pkginfo.$secname | ${__tr} -d '"')
 	echo $(_upls $pv)
     fi
 }
@@ -854,13 +854,13 @@ docs_for()
     if [ ! -z $# ]; then
         setdir source
         ddir=${stagedir}${prefix}/${_docdir}/${secname}-${version}
-        ${MKDIR} -p $ddir
+        ${__mkdir} -p $ddir
         echo "Adding docs"
         until [ -z "$1" ]
         do
             for f in $(_upls $1)
             do
-                ($TAR -cf - "$f")|(cd $ddir; $TAR -xvBpf -)
+                (${__tar} -cf - "$f")|(cd $ddir; ${__tar} -xvBpf -)
             done
             shift
         done
@@ -872,10 +872,10 @@ docs_for()
 do_strip_bin()
 {
     echo "Stripping ELF binaries..."
-    for f in `$FIND . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec $FILE {} \; | \
-	$GREP -v ' dynamic lib ' | \
-	$SED -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
-	$STRIP $strip_elf_args $f || :
+    for f in `${__find} . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec ${__file} {} \; | \
+	${__grep} -v ' dynamic lib ' | \
+	${__sed} -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
+	${__strip} $strip_elf_args $f || :
     done
 }
 
@@ -887,10 +887,10 @@ do_strip_shared()
     # Strip ELF shared objects (see brp-strip-shared from RPM)
     # Please note we don't restrict our search to executable files because
     # our libraries are not (should not be, at least) +x.
-    for f in `$FIND . -type f -a -exec $FILE {} \; | \
+    for f in `${__find} . -type f -a -exec ${__file} {} \; | \
 	grep ' dynamic lib ' | \
-	$SED -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
-	$STRIP $strip_shared_args $f
+	${__sed} -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
+	${__strip} $strip_shared_args $f
     done
 }
 
@@ -900,10 +900,10 @@ do_strip_static()
 {
     echo "Stripping static archives..."
     # Strip static libraries. (see brp-strip-static-archive from RPM)
-    for f in `$FIND . -type f -a -exec $FILE {} \; | \
-	$GREP 'current ar archive' | \
-	$SED -n -e 's/^\(.*\):[	]*current ar archive,.*/\1/p'`; do
-	$STRIP $strip_static_args $f
+    for f in `${__find} . -type f -a -exec ${__file} {} \; | \
+	${__grep} 'current ar archive' | \
+	${__sed} -n -e 's/^\(.*\):[	]*current ar archive,.*/\1/p'`; do
+	${__strip} $strip_static_args $f
     done
 }
     

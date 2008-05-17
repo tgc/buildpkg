@@ -29,54 +29,7 @@ fi
 #		All patching will be done from *within* $srcdir/$topsrcdir directory with patch -p1
 #		patches must be in uncompressed format
 
-# Define tool programs
-STRIP=/usr/bin/strip
-UNAME=/usr/bin/uname
-TAR=/usr/local/bin/tar # GNU tar please!
-VTAR=/usr/bin/tar # vendor supplied tar
-BZIP2=/usr/bin/bzip2
-GZIP=/usr/bin/gzip
-PATCH=/usr/local/bin/patch # GNU patch 2.5 or better please!
-RM=/usr/bin/rm
-RMDIR=/usr/bin/rmdir
-MKDIR=/usr/bin/mkdir
-MAKE_PROG=/usr/local/bin/make # GNU make please!
-FIND=/usr/bin/find # vendor supplied find, GNU find will require changes to the script
-XARGS=/usr/bin/xargs
-CAT=/usr/bin/cat
-AWK=/usr/bin/nawk # This must be nawk or GNU awk - plain /usr/bin/awk will *not* work
-SED=/usr/bin/sed
-GSED=/usr/local/bin/sed
-SORT=/usr/bin/sort
-CUT=/usr/bin/cut
-LS=/usr/bin/ls
-EXPR=/usr/bin/expr
-MV=/usr/bin/mv
-MKDIR=/usr/bin/mkdir
-CP=/usr/bin/cp
-TEE=/bin/tee
-GREP=/bin/grep
-EGREP=/bin/egrep
-UNIQ=/bin/uniq
-BASENAME=/bin/basename
-DIRNAME=/bin/dirname
-TR=/bin/tr
-FILE=/usr/bin/file # Used by do_strip()
-PRINTF=/usr/bin/printf
-LN=/usr/bin/ln
-GINSTALL=/usr/local/bin/install # BSD compatible install - usually GNU install
-COMPRESS=/usr/bsd/compress
-PACK=/usr/bin/pack
-SHA1SUM=/usr/local/bin/sha1sum
-UNZIP=/usr/local/bin/unzip
-LDD=/usr/bin/ldd
-HEAD=/usr/bin/head # Must support -n
-
-# Groff stuff for manpages
-NROFF=/usr/local/bin/nroff
-NROFFOPTS="-c -mandoc -Tascii -t"
-
-# __ prefixed namespace for tool programs
+# Define tools programs in __ prefixed namespace
 . $BUILDPKG_BASE/scripts/buildpkg.tools
 
 # Define defaults
@@ -115,7 +68,7 @@ _datadir=$_sharedir
 
 tmpdir=/tmp
 
-_os=$($UNAME -sr|$SED -e 's/ //g' -e 's/\.//g'|$TR '[A-Z]' '[a-z]')
+_os=$(${__uname} -sr|${__sed} -e 's/ //g' -e 's/\.//g'|${__tr} '[A-Z]' '[a-z]')
 
 # pkg information.
 # The following 3 vars can be used when constructing pkg metadata
@@ -282,7 +235,7 @@ patch()
 	fi # We are now sure that $patch[$pnum] contains file with absolute path
 	echo "Processing patch[$pnum] - ${patch[$pnum]}"
 	if [ -r ${patch[$pnum]} ]; then # file is readable
-	    $PATCH -Es $2 < ${patch[$pnum]}
+	    ${__patch} -Es $2 < ${patch[$pnum]}
 	    if [ $? -ne 0 ]; then
 		error $E_PATCH_FAILED patch
 	    fi
@@ -315,12 +268,12 @@ unpack()
 
 	# Determine filetype and unpack
 	case $suffix in
-	    'tar') $TAR -xf ${source[$snum]};;
-	    'gz') $GZIP -dc ${source[$snum]} | $TAR -xf -;;
-	    'bz2') $BZIP2 -dc ${source[$snum]} | $TAR -xf -;;
-	    'Z') $GZIP -dc ${source[$snum]} | $TAR -xf -;;
-	    'tgz') $GZIP -dc ${source[$snum]} | $TAR -xf -;;
-	    'zip') $UNZIP -q ${source[$snum]};;
+	    'tar') ${__tar} -xf ${source[$snum]};;
+	    'gz') ${__gzip} -dc ${source[$snum]} | ${__tar} -xf -;;
+	    'bz2') ${__bzip2} -dc ${source[$snum]} | ${__tar} -xf -;;
+	    'Z') ${__gzip} -dc ${source[$snum]} | ${__tar} -xf -;;
+	    'tgz') ${__gzip} -dc ${source[$snum]} | ${__tar} -xf -;;
+	    'zip') ${__unzip} -q ${source[$snum]};;
 	    *) error $E_BAD_COMPRESS unpack
 	esac
 	if [ $? -ne 0 ]; then
@@ -341,34 +294,34 @@ clean()
     case $1 in
 	'source')   if [ -d "$srcdir/$topsrcdir" ]; then
 			echo "Removing $srcdir/$topsrcdir"
-			$RM -rf $srcdir/$topsrcdir
+			${__rm} -rf $srcdir/$topsrcdir
 		    else
 			echo "No unpacked source to scrub"
 		    fi
 		    ;;
 	'stage')    if [ -d $stagedir -a "$stagedir" != "/"  ]; then
 			echo "Emptying $stagedir"
-			$RM -rf $stagedir # This is very dangerous!
-			$MKDIR $stagedir
+			${__rm} -rf $stagedir # This is very dangerous!
+			${__mkdir} $stagedir
 		    else
 			error $E_BAD_DIR clean
 		    fi
 		    ;;
 	'meta')	    
-		    if [ "$($UNAME -s)" == "SunOS" ]; then
+		    if [ "$(${__uname} -s)" == "SunOS" ]; then
 			for secname in $(list_pkgs)
 			do
 			    META_CLEAN="$META_CLEAN prototype.$secname pkginfo.$secname"
 			    pkgname=$(get_pkgname $secname)
 			    echo "Removing $buildpkgbase/$pkgdir/$pkgname"
-			    [ ! -z "$pkgname" ] && $RM -rf $buildpkgbase/$pkgdir/$pkgname
+			    [ ! -z "$pkgname" ] && ${__rm} -rf $buildpkgbase/$pkgdir/$pkgname
 			done
 		    fi
 
 		    for i in $META_CLEAN
 		    do
 			echo "Removing $metadir/$i"
-			$RM -f $metadir/$i
+			${__rm} -f $metadir/$i
 		    done
 		    ;;
 
@@ -376,7 +329,7 @@ clean()
 			clean stage
 			clean meta
 			# Irix only - ugly hack
-			$RM -f $metadir/relnotes*.txt
+			${__rm} -f $metadir/relnotes*.txt
 			;;
 	*)  error $E_BAD_CLEANOPTION clean
     esac
@@ -416,22 +369,22 @@ do_autonuke()
     if [ -d "${_infodir}" ]; then
 	if [ -r ${_infodir}/dir ]; then
 	    echo "Nuking ${_infodir}/dir"
-	    ${RM} -f ${_infodir}/dir
+	    ${__rm} -f ${_infodir}/dir
 	    didnuke=1
 	fi
     fi
      if [ -d "${_libdir}" ]; then
 	if [ -r ${_libdir}/charset.alias ]; then
 	    echo "Nuking ${_libdir}/charset.alias"
-	    ${RM} -f ${_libdir}/charset.alias
+	    ${__rm} -f ${_libdir}/charset.alias
 	    didnuke=1
 	fi
     fi
-    if [ -d "${_libdir}" -a ! -z "$($LS ${_libdir}/*.la 2>/dev/null)" ]; then
+    if [ -d "${_libdir}" -a ! -z "$(${__ls} ${_libdir}/*.la 2>/dev/null)" ]; then
 	for i in ${_libdir}/*.la
 	do
 	    echo "Nuking $i"
-	    ${RM} -f "$i"
+	    ${__rm} -f "$i"
 	done
 	didnuke=1
     fi
@@ -462,11 +415,11 @@ symlink_man()
 	    manpages="$(echo $i/*)"
 	    for manpage in $manpages
 	    do
-		solink="$($HEAD -n 1 $manpage)"
+		solink="$(${__head} -n 1 $manpage)"
 		if [ "${solink:0:3}" = ".so" ]; then # .so style link to be converted
 		    linkdest="${solink#.so*/}"
 		    [ "$symlinkman_verbose" -eq 1 ] && echo "Symlinking $linkdest->$manpage"
-		    $LN -sf "$linkdest" "$manpage"
+		    ${__ln} -sf "$linkdest" "$manpage"
 		fi
 	    done
 	    IFS="$OIFS"
@@ -489,22 +442,22 @@ fix_man()
     do
 	if [ -d $i ]; then
 	    catdir=cat${i##man}
-	    $MKDIR $catdir
+	    ${__mkdir} $catdir
 	    cd $i
 	    for manpage in *
 	    do
 		if [ -L "$manpage" ]; then
-		    TARGET=$($LS -l "$manpage" | $AWK '{ print $NF }')
-		    $LN -sf "$TARGET" "$manpage"
-		    $MV "$manpage" "../$catdir"
-		    $RM -f "$manpage"
+		    TARGET=$(${__ls} -l "$manpage" | ${__awk} '{ print $NF }')
+		    ${__ln} -sf "$TARGET" "$manpage"
+		    ${__mv} "$manpage" "../$catdir"
+		    ${__rm} -f "$manpage"
 		else
-		    $NROFF $NROFFOPTS "$manpage" > "../$catdir/$manpage"
-		    $RM -f $manpage
+		    ${__nroff} $NROFFOPTS "$manpage" > "../$catdir/$manpage"
+		    ${__rm} -f $manpage
 		fi
 	    done
 	    cd ..
-	    ${RMDIR} $i
+	    ${__rmdir} $i
 	fi
     done
 }
@@ -516,15 +469,15 @@ compress_man()
 {
     if [ "$gzman" -eq 1 ]; then # Use gzip
 	local compsuffix=gz
-	local pack=$GZIP
+	local pack=${__gzip}
     fi
     if [ "$compressman" -eq 1 ]; then # Use compress(1)
 	local compsuffix=Z
-	local pack="$COMPRESS -f"
+	local pack="${__compress} -f"
     fi
     if [ "$packman" -eq 1 ]; then # Use pack(1)
 	local compsuffix=z
-	local pack="$PACK -f"
+	local pack="${__pack} -f"
     fi
 
     echo "Compressing manpages"
@@ -537,9 +490,9 @@ compress_man()
 		suffix="${manpage##*.}"
 		if [ "$suffix" != "gz" -a "$suffix" != "Z" ]; then #probably uncompressed...
 		    if [ -L "$manpage" ]; then
-			TARGET=$($LS -l "$manpage" | $AWK '{ print $NF }')
-			$LN -sf "$TARGET".$compsuffix "$manpage".$compsuffix
-			$RM -f "$manpage"
+			TARGET=$(${__ls} -l "$manpage" | ${__awk} '{ print $NF }')
+			${__ln} -sf "$TARGET".$compsuffix "$manpage".$compsuffix
+			${__rm} -f "$manpage"
 		    else
 			$pack "$manpage"
 		    fi
@@ -558,7 +511,7 @@ compress_info()
     echo "Compressing info pages"
     for i in *
     do
-	${GZIP} $i
+	${__gzip} $i
     done
 }
 
@@ -573,13 +526,13 @@ doc()
     if [ ! -z $# ]; then
 	setdir source
 	ddir=${stagedir}${prefix}/${_docdir}/${topdir}-${version}
-	${MKDIR} -p $ddir
+	${__mkdir} -p $ddir
 	echo "Adding docs"
 	until [ -z "$1" ]
 	do
 	    for f in $(_upls $1)
 	    do
-		($TAR -cf - "$f")|(cd $ddir; $TAR -xvBpf -)
+		(${__tar} -cf - "$f")|(cd $ddir; ${__tar} -xvBpf -)
 	    done
 	    shift
 	done
@@ -690,7 +643,7 @@ generic_build()
     if [ $? -ne 0 ]; then
 	error $E_BAD_CONFIG generic_build
     fi
-    $MAKE_PROG $(_upls $make_build_target)
+    ${__make} $(_upls $make_build_target)
     if [ $? -ne 0 ]; then
 	error $E_BAD_MAKE generic_build
     fi
@@ -701,7 +654,7 @@ generic_build()
 generic_check()
 {
     setdir ${srcdir}/${topsrcdir}/$1
-    $MAKE_PROG -k $(_upls $make_check_target)
+    ${__make} -k $(_upls $make_check_target)
 }
 
 # generic_build_perl(): Build a perl module from source
@@ -713,16 +666,16 @@ generic_check()
 generic_build_perl()
 {
     setdir source
-    $GGREP -rsl '^#!.*perl' . |
-    $GGREP -v '.bak$' |$XARGS --no-run-if-empty \
-    ${__PERL} -MExtUtils::MakeMaker -e 'MY->fixin(@ARGV)'
-    ${__PERL} Makefile.PL `${__PERL} -MExtUtils::MakeMaker -e " print qq|PREFIX=${stagedir}${prefix}| if \$ExtUtils::MakeMaker::VERSION =~ /5\.9[1-6]|6\.0[0-5]/ "`
+    ${__ggrep} -rsl '^#!.*perl' . |
+    ${__ggrep} -v '.bak$' |${__xargs} --no-run-if-empty \
+    ${__perl} -MExtUtils::MakeMaker -e 'MY->fixin(@ARGV)'
+    ${__perl} Makefile.PL `${__perl} -MExtUtils::MakeMaker -e " print qq|PREFIX=${stagedir}${prefix}| if \$ExtUtils::MakeMaker::VERSION =~ /5\.9[1-6]|6\.0[0-5]/ "`
     # Now do the actual build using std. generic_build with no_configure=1
     no_configure=1
     generic_build
     # And a little extra, this is a candidate for inclusion in plain generic_build
     if [ "$maketest" -eq 1 ]; then
-        $MAKE_PROG test
+        ${__make} test
     fi
 }
 
@@ -730,7 +683,7 @@ generic_build_perl()
 # params: $@ passed directly to make install
 makeinstall()
 {
-    $MAKE_PROG \
+    ${__make} \
 	prefix=${stagedir}${prefix} \
 	exec_prefix=${stagedir}${prefix} \
 	bindir=${stagedir}${prefix}/${_bindir} \
@@ -767,10 +720,10 @@ generic_install()
 	clean stage
 	if [ "$shortroot" -eq 1 ]; then
 	    dest="${stagedir}${prefix}"
-	    ${MKDIR} -p "$dest"
+	    ${__mkdir} -p "$dest"
 	fi
 	setdir ${srcdir}/${topsrcdir}/$2
-	$MAKE_PROG $destvar=$dest install
+	${__make} $destvar=$dest install
 	if [ $? -ne 0 ]; then
 	    error $E_BAD_MAKE generic_install
 	fi
@@ -792,22 +745,22 @@ generic_install_perl()
 {
     clean stage
     setdir source
-    makeinstall $(${__PERL} -MExtUtils::MakeMaker -e " print \$ExtUtils::MakeMaker::VERSION <= 6.05 ? qq|PREFIX=${stagedir}${prefix}| : qq|DESTDIR=${stagedir}| ")
+    makeinstall $(${__perl} -MExtUtils::MakeMaker -e " print \$ExtUtils::MakeMaker::VERSION <= 6.05 ? qq|PREFIX=${stagedir}${prefix}| : qq|DESTDIR=${stagedir}| ")
 
     # remove special files
-    $FIND ${stagedir} -name "perllocal.pod" \
+    ${__find} ${stagedir} -name "perllocal.pod" \
 	-o -name ".packlist" 		    \
 	-o -name "*.bs"			    \
-	| $XARGS -i rm -f {}
+	| ${__xargs} -i rm -f {}
 
     # no empty directories
-    $FIND ${stagedir}${prefix}		    \
+    ${__find} ${stagedir}${prefix}		    \
 	-type d -depth			    \
 	-exec rmdir {} \; 2>/dev/null
 
     export BUILDROOT="$stagedir"
 
-    ${__PERL} -MFile::Find -le '
+    ${__perl} -MFile::Find -le '
     my $buildroot = $ENV{BUILDROOT};
     find({ wanted => \&wanted, no_chdir => 1}, "$buildroot");
     # No docs here, add them in the usual way but to pkgdef.template
@@ -848,7 +801,7 @@ generic_install_perl()
 	exit -1
     }
     # For handling any doc lines in the filelist, disabled for now (see above)
-    #eval $($GREP '^doc' filelist)
+    #eval $(${__grep} '^doc' filelist)
 
     # To get stripping etc we call the regular generic_install now but with custom_install=1
     custom_install=1
@@ -879,7 +832,7 @@ esac
 # by generic_install_perl.
 generic_pack_perl()
 {
-    $CAT $metadir/pkgdef.template $srcdir/$topsrcdir/filelist | $SED -e "s;^$prefix/;;g" > $metadir/pkgdef
+    ${__cat} $metadir/pkgdef.template $srcdir/$topsrcdir/filelist | ${__sed} -e "s;^$prefix/;;g" > $metadir/pkgdef
     generic_pack "$@"
 }
 
