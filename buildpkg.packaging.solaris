@@ -564,7 +564,7 @@ auto_deps()
     for j in $(list_pkgs)
     do
 	temp=$(get_pkgname $j)
-	deps=$(echo $deps | ${__sed} -e "/$temp/d")
+	deps=$(echo $deps | ${__sed} -e "s/$temp//")
     done
     # Parse any speciel depends
     # We don't do ignore_deps processing for these deps
