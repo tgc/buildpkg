@@ -336,90 +336,91 @@ auto_rel()
 
     for i in relnotes relnotes.${_os} relnotes.$secname relnotes.${_os}.$secname
     do
-	[ -r ${metadir}/${i} ] && rn=$i
+	[ -r ${metadir}/${i} ] && rn=${metadir}/$i
     done
-    if [ -r ${metadir}/${rn} ]; then
-	local relmetadir=${stagedir}${metainstalldir}relnotes/$secname-$version-$pkgver
-	### compute configure info for relnotes
-	local cf="$(_upls $configure_args)"
-	[ -n "$ac_overrides" ] && local aco="$(for ar in $ac_overrides; do echo $ar; done | ${__awk} '{ printf "%s \\\\ \\n",$0 }')"
-	local temp_fullcf="$(echo "$__configure $cf" | ${__awk} '{ printf "%s\\n",$0 }')"
-	temp_fullcf="$(echo "${aco}${temp_fullcf}")"
-	# Remove trailing whitespace and \n
-	local fullcf="${temp_fullcf%\\*}"
-	###
-	### compute compiler info for relnotes
-	if [ $suncc -eq 0 ]; then
-	    #local compiler_temp="$(gcc --version 2>&1 | ${__sed} -n '1,1p')"
-	    #local compiler="gcc ${compiler_temp##* }"
-	    local compiler="$(gcc -v 2>&1 | ${__sed} -n '/^gcc/ s/ version//p')"
-	else # not gcc
-	    local compiler="$(cc -version 2>&1)"
-	    if [ "$CXX" = "g++" ]; then
-		# SUN cc with gnu g++
-		local compiler_temp="$(g++ --version 2>&1 | ${__sed} -n '1,1p')"
-		local compiler="$((echo $compiler; echo g++ ${compiler_temp##* }) | ${__awk} '{ printf "%s\\n",$0 }')"
-		local compiler="${compiler%\\*}"
-	    fi
-	fi
-	###
-	local pkgnam=$(get_pkgname $secname)
-	local vendor=$(get_pkgvendor $secname)
-	local packager="${pkgedby} <${email}>"
-	### Compute SHA1 sums for all source entries
-	local s
-	local path
-	local file
-	local source_sha1sum
-	local temp_source_sha1sum=""
-	# older bash 2.x doesn't like C-style for loops (observed on Solaris 2.x)
-	#for ((s=0; $s < ${#source[@]}; s++))
-	local s=0
-	while [ $s -lt ${#source[@]} ]
-	do
-	    # A little snip from buildpkg.functions:unpack
-	    if [ "${source[$s]:0:1}" != "/" ]; then # We have a relative pathname
-		# expand to absolute
-		[ -r "$srcdir/${source[$s]}" ] && source[$s]="$srcdir/${source[$s]}"
-		[ -r "$srcfiles/${source[$s]}" ] && source[$s]="$srcfiles/${source[$s]}"
-	    fi # We are now sure that ${source[$s]} contains file with absolute path
-	    # To avoid recording an absolute path in the sha1sum output that gets inserted
-	    # into relnotes we cd first then run sha1sum
-	    path="${source[$s]%/*}" # Extract path part
-	    file="${source[$s]##*/}" # Extract filename part
-	    (cd "$path"; ${__sha1sum} "$file") >> $metadir/sums.${secname}
-	    let s=s+1
-	done
-	[ -r "$metadir/sums.${secname}" ] && temp_source_sha1sum="$(cat $metadir/sums.${secname} | ${__awk} '{ printf "%s\\n",$0 }')"
-	source_sha1sum="${temp_source_sha1sum%\\*}"
-	### End of SHA1 sum computing
-	### Extract environtment variables
-	local temp_extracted_env="$(${__sed} -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|${__grep} ^ENV|${__sed} -e 's/ENV //g'|${__awk} '{ printf "%s\\n",$0 }' && ${__rm} -f /tmp/env.sh)"
-	# Remove trailing \n
-	local extracted_env="${temp_extracted_env%\\*}"
-	###
-	### Add dependencies
-	local temp_deps="$(${__cat} $metadir/depend.$secname.all | ${__sed} -e '/^$/d;/^	/d' | ${__sort} -u | ${__awk} '{ printf "%s\\n",$0 }')"
-	local deps="${temp_deps%\\*}"
-	###
-	${__mkdir} -p $relmetadir
-	${__gsed} -e "s;%%PKGNAME%%;${pkgnam};g" \
-	    -e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
-	    -e "s;%%CONFIGURE%%;${fullcf};g" \
-	    -e "s;%%COMPILER%%;${compiler};g" \
-	    -e "s;%%VENDOR%%;${vendor};g" \
-	    -e "s;%%PKGEDBY%%;${packager};g" \
-	    -e "s;%%SOURCE_SHA1SUM%%;${source_sha1sum};g" \
-	    -e "s;%%ENVIRONMENT%%;${extracted_env};g" \
-	    -e "s;%%DEPENDENCIES%%;${deps};g" \
-		${metadir}/${rn} > "$relmetadir/${secname}.txt"
-
-	### Add the relnotes to the prototype file
-	add_dir $defaultperms $defaultuid $defaultgid "${metaprefix}relnotes" $secname
-	add_proto $defaultperms $defaultuid $defaultgid "${metaprefix}relnotes/$secname-$version-$pkgver" $secname
-    else
-	echo "auto_rel: No release notes found!"
+    # No local relnotes use global template
+    if [ ! -r "${rn}" ]; then
+	echo "auto_rel: Using global relnotes template"
+	rn=${BUILDPKG_BASE}/scripts/relnotes.template.irix
     fi
+    local relmetadir=${stagedir}${metainstalldir}relnotes/$secname-$version-$pkgver
+    ### compute configure info for relnotes
+    local cf="$(_upls $configure_args)"
+    [ -n "$ac_overrides" ] && local aco="$(for ar in $ac_overrides; do echo $ar; done | ${__awk} '{ printf "%s \\\\ \\n",$0 }')"
+    local temp_fullcf="$(echo "$__configure $cf" | ${__awk} '{ printf "%s\\n",$0 }')"
+    temp_fullcf="$(echo "${aco}${temp_fullcf}")"
+    # Remove trailing whitespace and \n
+    local fullcf="${temp_fullcf%\\*}"
+    ###
+    ### compute compiler info for relnotes
+    if [ $suncc -eq 0 ]; then
+	#local compiler_temp="$(gcc --version 2>&1 | ${__sed} -n '1,1p')"
+	#local compiler="gcc ${compiler_temp##* }"
+	local compiler="$(gcc -v 2>&1 | ${__sed} -n '/^gcc/ s/ version//p')"
+    else # not gcc
+	local compiler="$(cc -version 2>&1)"
+	if [ "$CXX" = "g++" ]; then
+	    # SUN cc with gnu g++
+	    local compiler_temp="$(g++ --version 2>&1 | ${__sed} -n '1,1p')"
+	    local compiler="$((echo $compiler; echo g++ ${compiler_temp##* }) | ${__awk} '{ printf "%s\\n",$0 }')"
+	    local compiler="${compiler%\\*}"
+	fi
+    fi
+    ###
+    local pkgnam=$(get_pkgname $secname)
+    local vendor=$(get_pkgvendor $secname)
+    local packager="${pkgedby} <${email}>"
+    ### Compute SHA1 sums for all source entries
+    local s
+    local path
+    local file
+    local source_sha1sum
+    local temp_source_sha1sum=""
+    # older bash 2.x doesn't like C-style for loops (observed on Solaris 2.x)
+    #for ((s=0; $s < ${#source[@]}; s++))
+    local s=0
+    while [ $s -lt ${#source[@]} ]
+    do
+	# A little snip from buildpkg.functions:unpack
+	if [ "${source[$s]:0:1}" != "/" ]; then # We have a relative pathname
+	    # expand to absolute
+	    [ -r "$srcdir/${source[$s]}" ] && source[$s]="$srcdir/${source[$s]}"
+	    [ -r "$srcfiles/${source[$s]}" ] && source[$s]="$srcfiles/${source[$s]}"
+	fi # We are now sure that ${source[$s]} contains file with absolute path
+	# To avoid recording an absolute path in the sha1sum output that gets inserted
+	# into relnotes we cd first then run sha1sum
+	path="${source[$s]%/*}" # Extract path part
+	file="${source[$s]##*/}" # Extract filename part
+	(cd "$path"; ${__sha1sum} "$file") >> $metadir/sums.${secname}
+	let s=s+1
+    done
+    [ -r "$metadir/sums.${secname}" ] && temp_source_sha1sum="$(cat $metadir/sums.${secname} | ${__awk} '{ printf "%s\\n",$0 }')"
+    source_sha1sum="${temp_source_sha1sum%\\*}"
+    ### End of SHA1 sum computing
+    ### Extract environtment variables
+    local temp_extracted_env="$(${__sed} -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|${__grep} ^ENV|${__sed} -e 's/ENV //g'|${__awk} '{ printf "%s\\n",$0 }' && ${__rm} -f /tmp/env.sh)"
+    # Remove trailing \n
+    local extracted_env="${temp_extracted_env%\\*}"
+    ###
+    ### Add dependencies
+    local temp_deps="$(${__cat} $metadir/depend.$secname.all | ${__sed} -e '/^$/d;/^	/d' | ${__sort} -u | ${__awk} '{ printf "%s\\n",$0 }')"
+    local deps="${temp_deps%\\*}"
+    ###
+    ${__mkdir} -p $relmetadir
+    ${__gsed} -e "s;%%PKGNAME%%;${pkgnam};g" \
+	-e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
+	-e "s;%%CONFIGURE%%;${fullcf};g" \
+	-e "s;%%COMPILER%%;${compiler};g" \
+	-e "s;%%VENDOR%%;${vendor};g" \
+	-e "s;%%PKGEDBY%%;${packager};g" \
+	-e "s;%%SOURCE_SHA1SUM%%;${source_sha1sum};g" \
+	-e "s;%%ENVIRONMENT%%;${extracted_env};g" \
+	-e "s;%%DEPENDENCIES%%;${deps};g" \
+	    ${rn} > "$relmetadir/${secname}.txt"
+
+    ### Add the relnotes to the prototype file
+    add_dir $defaultperms $defaultuid $defaultgid "${metaprefix}relnotes" $secname
+    add_proto $defaultperms $defaultuid $defaultgid "${metaprefix}relnotes/$secname-$version-$pkgver" $secname
 }
 
 # auto_dir(): Make sure all necessary dir entries are in prototype
