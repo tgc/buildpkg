@@ -1,10 +1,26 @@
-#
-# Function library for build.sh
-#
+# Function library for buildpkg build.sh
 # This is only for build.sh helper functions.
+# Copyright (C) 2003 Jens-Henrik Leonhard Jensen
+# Copyright (C) 2003-2008 Tom G. Christensen <tgc@jupiterrise.com>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Written by Tom G. Christensen <tgc@jupiterrise.com>.
+
 #
 # The concept of "method" registering and the logic that implements it was
-# stolen from jhlj's Compile.sh script :)
+# borrowed from my colleague Jens-Henrik Leonhard Jensen.
 #
 
 # Define script functions and register them

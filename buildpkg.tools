@@ -1,6 +1,5 @@
-#
 # Global tool defintions for buildpkg
-#
+
 # Define tool programs in rpm style __ prefixed namespace
 __strip=/usr/bin/strip
 __uname=/usr/bin/uname
