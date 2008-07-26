@@ -45,6 +45,7 @@ __head=/usr/bin/head # Must support -n
 __perl=/usr/tgcware/bin/perl
 __readlink=/usr/tgcware/bin/readlink
 __ldd=/usr/bin/ldd
+__curl=/usr/tgcware/bin/curl
 
 # Groff stuff for manpages
 __nroff=/usr/tgcware/bin/nroff

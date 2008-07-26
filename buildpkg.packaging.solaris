@@ -393,22 +393,14 @@ auto_rel()
     local source_sha1sum
     local temp_source_sha1sum=""
     # older bash 2.x doesn't like C-style for loops (observed on Solaris 2.x)
-    #for ((s=0; $s < ${#source[@]}; s++))
-    local s=0
-    while [ $s -lt ${#source[@]} ]
+    #for ((snum=0; $snum < ${#source[@]}; s++))
+    local snum=0
+    while [ $snum -lt ${#source[@]} ]
     do
-	# A little snip from buildpkg.functions:unpack
-	if [ "${source[$s]:0:1}" != "/" ]; then # We have a relative pathname
-	    # expand to absolute
-	    [ -r "$srcdir/${source[$s]}" ] && source[$s]="$srcdir/${source[$s]}"
-	    [ -r "$srcfiles/${source[$s]}" ] && source[$s]="$srcfiles/${source[$s]}"
-	fi # We are now sure that ${source[$s]} contains file with absolute path
-	# To avoid recording an absolute path in the sha1sum output that gets inserted
-	# into relnotes we cd first then run sha1sum
-	path="${source[$s]%/*}" # Extract path part
-	file="${source[$s]##*/}" # Extract filename part
-	(cd "$path"; ${__sha1sum} "$file") >> $metadir/sums.${secname}
-	let s=s+1
+	path="$(get_source_path $snum)"
+	file="$(get_source_filename $snum)"
+	(cd "$path"; ${__sha1sum} "$file") >> $metadir/sums
+	let snum=snum+1
     done
     [ -r "$metadir/sums.${secname}" ] && temp_source_sha1sum="$(cat $metadir/sums.${secname} | ${__awk} '{ printf "%s\\n",$0 }')"
     source_sha1sum="${temp_source_sha1sum%\\*}"

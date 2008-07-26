@@ -165,6 +165,7 @@ E_BAD_VERSION=46
 E_BAD_LIBS=47
 E_SVR4_PKG_OVERFLOW=48
 E_SVR4_NAME_OVERFLOW=49
+E_MISSING_EXE=50
 
 error_txt[$E_BAD_FILE]="File not found"
 error_txt[$E_PATCH_FAILED]="Patch failed"
@@ -183,6 +184,7 @@ error_txt[$E_BAD_VERSION]="Version field overflow"
 error_txt[$E_BAD_LIBS]="config.log defines obsolete libraries!"
 error_txt[$E_SVR4_PKG_OVERFLOW]="PKG field exceeds 9 char limit"
 error_txt[$E_SVR4_NAME_OVERFLOW]="NAME field exceeds 256 char limit"
+error_txt[$E_MISSING_EXE]="Executable is missing"
 
 ##################################################### 
 # Helper functions
@@ -263,6 +265,91 @@ patch()
     fi
 }
 
+# get_source_filename(): Find filename for given sourceid
+# params: $1 = source number (arrayindex)
+get_source_filename()
+{
+    local snum=$1
+    local file="${source[$snum]##*/}" # Extract filename part
+
+    if [ -z "$file" ]; then
+	error  $E_BAD_FILE get_source_filename
+    else
+	echo $file
+    fi
+}
+
+# get_source_path(): Find local path for given sourceid
+# params: $1 = source number (arrayindex)
+get_source_path()
+{
+    local snum=$1
+    local path_return=""
+    local path="${source[$snum]%/*}" # Extract path part
+    local file=$(get_source_filename $snum) # Extract filename part
+
+    if [ -n "$path" ]; then
+	# We have a path component, could be relative, url or abs path
+	if [ "${path:0:1}" != "/" ]; then
+	    # path is relative or contains an url
+	    # If path contains an url
+	    if [ -n "$(echo $path | grep '://')" ]; then
+		# let empty $path code handle it
+		path=""
+	    else
+		# Not an url
+		[ -r "$srcdir/$file" ] && path_return="$srcdir"
+		[ -r "$srcfiles/$file" ] && path_return="$srcfiles"
+	    fi
+	else # abs path
+	    path_return=$path
+	fi
+    fi
+    # No path given
+    if [ -z "$path" ]; then
+	[ -r "$srcdir/$file" ] && path_return="$srcdir"
+	[ -r "$srcfiles/$file" ] && path_return="$srcfiles"
+    fi
+
+    [ -z "$path_return" ] && path_return="$srcfiles" # Best guess
+
+    echo $path_return
+}
+
+# get_source_absfilename(): Wrapper for get_source_filename and get_source_path
+# params: $1 = source number (arrayindex)
+# Note this wrapper will exit with $E_BAD_FILE if the absolute filename is not
+# readable
+get_source_absfilename()
+{
+    local snum=$1
+    local absfilename="$(get_source_path $snum)/$(get_source_filename $1)"
+    if [ -r "$absfilename" ]; then
+	echo "$absfilename"
+    else
+	# File is not readable
+	error $E_BAD_FILE get_source_absfilename
+    fi
+}
+
+# fetch_source(): Fetch a sourcefile from an url
+# params: $1 = source number (arrayindex)
+fetch_source()
+{
+    local snum=$1
+    local file=$(get_source_filename $snum)
+    local path=$(get_source_path $snum)
+
+    if [ ! -r "$path/$file" ]; then
+	echo "fetch_source: Downloading ${source[$snum]}"
+	if [ -x ${__curl} ]; then
+	    ${__curl} -# -L --retry 2 -C - -o $srcfiles/$file "${source[$snum]}"
+	else
+	    error $E_MISSING_EXE fetch_source
+	fi
+    fi
+}
+
 # unpack(): Unpack source
 # params: $1 = source number (arrayindex)
 # It will detect filetype and unpack
@@ -270,33 +357,37 @@ patch()
 unpack()
 {
     local snum=$1
+    local filename
+    local suffix
+    local absfile
 
     setdir $srcdir
-    if [ "${source[$snum]:0:1}" != "/" ]; then # We have a relative pathname
-	# expand to absolute
-	source[$snum]=$srcfiles/${source[$snum]}
-    fi # We are now sure that ${source[$snum]} contains file with absolute path
-    echo "Unpacking ${source[$snum]}"
-    if [ -r ${source[$snum]} ]; then # file is readable
-	local absfilename=${source[$snum]}
-	local filename=${absfilename##/*/} # Strip down to the filename
-	local suffix=${filename##*.} # Strip down to filename suffix (strip down to the last .)
 
-	# Determine filetype and unpack
-	case $suffix in
-	    'tar') ${__tar} -xf ${source[$snum]};;
-	    'gz') ${__gzip} -dc ${source[$snum]} | ${__tar} -xf -;;
-	    'bz2') ${__bzip2} -dc ${source[$snum]} | ${__tar} -xf -;;
-	    'Z') ${__gzip} -dc ${source[$snum]} | ${__tar} -xf -;;
-	    'tgz') ${__gzip} -dc ${source[$snum]} | ${__tar} -xf -;;
-	    'zip') ${__unzip} -q ${source[$snum]};;
-	    *) error $E_BAD_COMPRESS unpack
-	esac
-	if [ $? -ne 0 ]; then
-	    error $E_BAD_UNPACK unpack
-	fi
-    else
-	error $E_BAD_FILE unpack
+    # If source contains an URL then first
+    # download the file to $srcfiles
+    if [ -n "$(echo ${source[$snum]} | grep '://')" ]; then
+	# Yep it's an url
+	fetch_source $snum
+    fi
+
+    filename="$(get_source_filename $snum)"
+    suffix=${filename##*.} # Strip down to filename suffix (strip down to the last .)
+    echo "Unpacking $filename"
+    # Note observe order here, since get_source_absfilename can exit with $E_BAD_FILE this
+    # provides context for resolving!
+    absfile="$(get_source_absfilename $snum)"
+    # Determine filetype and unpack
+    case $suffix in
+	'tar') ${__tar} -xf $absfile;;
+	'gz') ${__gzip} -dc $absfile | ${__tar} -xf -;;
+	'bz2') ${__bzip2} -dc $abfile | ${__tar} -xf -;;
+	'Z') ${__gzip} -dc $absfile | ${__tar} -xf -;;
+	'tgz') ${__gzip} -dc $absfile | ${__tar} -xf -;;
+	'zip') ${__unzip} -q $absfile;;
+	*) error $E_BAD_COMPRESS unpack
+    esac
+    if [ $? -ne 0 ]; then
+	error $E_BAD_UNPACK unpack
     fi
 }
 

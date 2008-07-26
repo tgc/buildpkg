@@ -979,14 +979,8 @@ auto_src()
 	local snum=0
 	for ((snum=0; $snum < $numsource; snum++))
 	do
-	    if [ "${source[$snum]:0:1}" != "/" ]; then # We have a relative pathname
-		# expand to absolute
-		source[$snum]=$srcfiles/${source[$snum]}
-	    fi # We are now sure that ${source[$snum]} contains file with absolute path
-	    if [ -r ${source[$snum]} ]; then
-		echo "Copying source[$snum] - ${source[$snum]}"
-		${__cp} ${source[$snum]} $distsrcdir
-	    fi
+	    local absfile=$(get_source_absfilename $snum)
+	    ${__cp} $absfilename $distsrcdir
 	done
     fi
 }
@@ -1075,23 +1069,15 @@ auto_rel()
 	local vendor=$(_upls ${vendor_temp#pkgvendor=*})
 	local packager="${pkgedby} <${email}>"
 	# Compute SHA1 sums for all source entries
-	local s
+	local snum
 	local path
 	local file
 	local source_sha1sum
 	local temp_source_sha1sum=""
-	for ((s=0; $s < ${#source[@]}; s++))
+	for ((snum=0; $snum < ${#source[@]}; snum++))
 	do
-	    # A little snip from buildpkg.functions:unpack
-	    if [ "${source[$s]:0:1}" != "/" ]; then # We have a relative pathname
-		# expand to absolute
-		[ -r "$srcdir/${source[$s]}" ] && source[$s]="$srcdir/${source[$s]}"
-		[ -r "$srcfiles/${source[$s]}" ] && source[$s]="$srcfiles/${source[$s]}"
-	    fi # We are now sure that ${source[$s]} contains file with absolute path
-	    # To avoid recording an absolute path in the sha1sum output that gets inserted
-	    # into relnotes we cd first then run sha1sum
-	    path="${source[$s]%/*}" # Extract path part
-	    file="${source[$s]##*/}" # Extract filename part
+	    path="$(get_source_path $snum)"
+	    file="$(get_source_filename $snum)"
 	    (cd "$path"; ${__sha1sum} "$file") >> $metadir/sums
 	done
 	[ -r "$metadir/sums" ] && temp_source_sha1sum="$(cat $metadir/sums | ${__awk} '{ printf "%s\\n",$0 }')"
@@ -1107,7 +1093,7 @@ auto_rel()
 	fi
 	local deps="${temp_deps%\\*}"
 	${__mkdir} -p $relmetadir
-	${__sed} -e "s;%%PKGNAME%%;${pkgnam};g" \
+	${__gsed} -e "s;%%PKGNAME%%;${pkgnam};g" \
 	    -e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
 	    -e "s;%%CONFIGURE%%;${fullcf};g" \
 	    -e "s;%%COMPILER%%;${compiler};g" \
