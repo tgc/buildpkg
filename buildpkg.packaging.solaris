@@ -399,7 +399,7 @@ auto_rel()
     do
 	path="$(get_source_path $snum)"
 	file="$(get_source_filename $snum)"
-	(cd "$path"; ${__sha1sum} "$file") >> $metadir/sums
+	(cd "$path"; ${__sha1sum} "$file") >> $metadir/sums.${secname}
 	let snum=snum+1
     done
     [ -r "$metadir/sums.${secname}" ] && temp_source_sha1sum="$(cat $metadir/sums.${secname} | ${__awk} '{ printf "%s\\n",$0 }')"
