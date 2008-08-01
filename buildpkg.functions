@@ -380,7 +380,7 @@ unpack()
     case $suffix in
 	'tar') ${__tar} -xf $absfile;;
 	'gz') ${__gzip} -dc $absfile | ${__tar} -xf -;;
-	'bz2') ${__bzip2} -dc $abfile | ${__tar} -xf -;;
+	'bz2') ${__bzip2} -dc $absfile | ${__tar} -xf -;;
 	'Z') ${__gzip} -dc $absfile | ${__tar} -xf -;;
 	'tgz') ${__gzip} -dc $absfile | ${__tar} -xf -;;
 	'zip') ${__unzip} -q $absfile;;
