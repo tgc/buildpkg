@@ -25,6 +25,7 @@ __expr=/usr/bin/expr
 __mv=/usr/bin/mv
 __mkdir=/usr/bin/mkdir
 __cp=/usr/bin/cp
+__gcp=/usr/tgcware/bin/cp
 __tee=/bin/tee
 __grep=/bin/grep
 __egrep=/bin/egrep
@@ -49,3 +50,4 @@ __curl=/usr/tgcware/bin/curl
 
 # Groff stuff for manpages
 __nroff=/usr/tgcware/bin/nroff
+NROFFOPTS="-c -mandoc -Tascii -t"
