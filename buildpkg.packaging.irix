@@ -606,6 +606,7 @@ do_strip_bin()
     for f in `${__find} . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec ${__file} {} \; | \
 	${__grep} -v ' dynamic lib ' | \
 	${__sed} -n -e 's/^\(.*\):[	]*ELF.*\(not stripped\).*/\1/p'`; do
+	echo "strip_bin: $f"
 	${__strip} $strip_elf_args $f || :
     done
 } 
@@ -620,7 +621,8 @@ do_strip_shared()
     # our libraries are not (should not be, at least) +x.
     for f in `${__find} . -type f -a -exec ${__file} {} \; | \
 	grep ' dynamic lib ' | \
-	${__sed} -n -e 's/^\(.*\):[	]*ELF.*\(not stripped\).*/\1/p'`; do
+	${__sed} -n -e 's/^\(.*\):[	]*ELF.*/\1/p'`; do
+	echo "strip_shared: $f"
 	${__strip} $strip_shared_args $f
     done
 }
@@ -634,6 +636,7 @@ do_strip_static()
     for f in `${__find} . -type f -a -exec ${__file} {} \; | \
 	${__grep} 'current ar archive' | \
 	${__sed} -n -e 's/^\(.*\):[	]*current ar archive .*/\1/p'`; do
+	echo "strip_static: $f"
 	${__strip} $strip_static_args $f
     done
 }
