@@ -651,6 +651,7 @@ parse_def()
     local secpos=0
     local legalend=0
     local hasaddedpkginfo=0
+    local condexpr=""
 
     while read line
     do
@@ -721,6 +722,14 @@ parse_def()
 			if [ $foundfiles -eq 1 ]; then # We already found the 'files' line so this must be the filelist
 			    if [ "${line:0:4}" == "dir " ]; then
 				add_dir $defaultperms $defaultuid $defaultgid "${line:4}" $secname # Add dir entry
+			    elif [ "${line:0:3}" = "if(" ]; then
+				# Conditional expression
+				condexpr=${line#if(}
+				condexpr=${condexpr%%)*}
+				if [ "x${!condexpr}" != "x" ]; then
+				    # value of condexpr was defined so we should process the line as normal
+				    add_proto $defaultperms $defaultuid $defaultgid "${line#if(*)}" $secname
+				fi
 			    elif [ "${line:0:12}" = "default_docs" ]; then
 				add_proto $defaultperms $defaultuid $defaultgid "${line:12}${metaprefix}${_docdir}/${secname}-${version}" $secname # Add std. doc location
 			    else
