@@ -1108,7 +1108,7 @@ auto_rel()
 	-e "s;%%SOURCE_SHA1SUM%%;${source_sha1sum};g" \
 	-e "s;%%ENVIRONMENT%%;${extracted_env};g" \
 	-e "s;%%DEPENDENCIES%%;${deps};g" \
-	    ${metadir}/${rn} > "$relmetadir/${topdir}.txt"
+	    ${rn} > "$relmetadir/${topdir}.txt"
 }
 
 # auto_dist(): Add idb & spec files to stagedir
