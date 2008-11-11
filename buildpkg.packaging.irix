@@ -1038,77 +1038,77 @@ auto_rel()
 
     for i in relnotes relnotes.${_os} relnotes.txt relnotes.${_os}.txt;
     do
-	[ -r ${metadir}/${i} ] && rn=$i
+	[ -r ${metadir}/${i} ] && rn=${metadir}/$i
     done
-    if [ -r ${metadir}/${rn} ]; then
-	local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
-	# compute configure info for relnotes
-	local cf="$(_upls $configure_args)"
-	[ -n "$ac_overrides" ] && local aco="$(for ar in $ac_overrides; do echo $ar; done | ${__awk} '{ printf "%s \\\\ \\n",$0 }')"
-	local temp_fullcf="$(echo "$__configure $cf" | ${__awk} '{ printf "%s\\n",$0 }')"
-	temp_fullcf="$(echo "${aco}${temp_fullcf}")"
-	# Remove trailing whitespace and \n
-	local fullcf="${temp_fullcf%\\*}"
-	# end
-	if [ $mipspro -eq 0 ]; then
-	    local compiler_temp="$(gcc --version 2>&1 | ${__sed} -n '1,1p')" 
-	    local compiler="gcc ${compiler_temp##* }"
-	else # not gcc
-	    if [ "$_os" = "irix53" ]; then
-		local compiler="Irix 5.3 IDO"
-	    else
-		local compiler="$(cc -version 2>&1)"
-	    fi
-	    if [ "$CXX" = "g++" ]; then
-		# SGI cc with gnu g++
-		local compiler_temp="$(g++ --version 2>&1 | ${__sed} -n '1,1p')" 
-		local compiler="$((echo $compiler; echo g++ ${compiler_temp##* }) | ${__awk} '{ printf "%s\\n",$0 }')"
-		local compiler="${compiler%\\*}"
-	    fi
-	fi
-	local pkgnam_temp=$(${__grep} 'pkgname=' $metadir/pkgdef)
-	local pkgnam=$(_upls ${pkgnam_temp#pkgname=*})
-	local vendor_temp=$(${__grep} 'pkgvendor=' $metadir/pkgdef)
-	local vendor=$(_upls ${vendor_temp#pkgvendor=*})
-	local packager="${pkgedby} <${email}>"
-	# Compute SHA1 sums for all source entries
-	local snum
-	local path
-	local file
-	local source_sha1sum
-	local temp_source_sha1sum=""
-	for ((snum=0; $snum < ${#source[@]}; snum++))
-	do
-	    path="$(get_source_path $snum)"
-	    file="$(get_source_filename $snum)"
-	    (cd "$path"; ${__sha1sum} "$file") >> $metadir/sums
-	done
-	[ -r "$metadir/sums" ] && temp_source_sha1sum="$(cat $metadir/sums | ${__awk} '{ printf "%s\\n",$0 }')"
-	source_sha1sum="${temp_source_sha1sum%\\*}"
-	# End of SHA1 sum computing
-	local temp_extracted_env="$(${__sed} -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|${__grep} ^ENV|${__sed} -e 's/ENV //g'|${__awk} '{ printf "%s\\n",$0 }' && ${__rm} -f /tmp/env.sh)"
-	# Remove trailing \n
-	local extracted_env="${temp_extracted_env%\\*}"
-	if [ -r ${depends}_all ]; then
-	    local temp_deps="$(${__cat} ${depends}_all | ${__grep} -v $pkgnam | ${__grep} $pkgprefix | ${__sed} -e "s/.*${pkgprefix}//" | ${__cut} -d. -f1 | ${__sort} -u | ${__awk} '{ printf "%s\\n",$0 }')"
-	else
-	    local temp_deps=""
-	fi
-	local deps="${temp_deps%\\*}"
-	${__mkdir} -p $relmetadir
-	${__gsed} -e "s;%%PKGNAME%%;${pkgnam};g" \
-	    -e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
-	    -e "s;%%CONFIGURE%%;${fullcf};g" \
-	    -e "s;%%COMPILER%%;${compiler};g" \
-	    -e "s;%%VENDOR%%;${vendor};g" \
-	    -e "s;%%PKGEDBY%%;${packager};g" \
-	    -e "s;%%SOURCE_SHA1SUM%%;${source_sha1sum};g" \
-	    -e "s;%%ENVIRONMENT%%;${extracted_env};g" \
-	    -e "s;%%DEPENDENCIES%%;${deps};g" \
-		${metadir}/${rn} > "$relmetadir/${topdir}.txt"
-    else
-	echo "auto_rel: No release notes found!"
+    if [ ! -r ${rn} ]; then
+	echo "auto_rel: Using global relnotes template"
+	rn=${BUILDPKG_BASE}/scripts/relnotes.template.irix
     fi
+    local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
+    # compute configure info for relnotes
+    local cf="$(_upls $configure_args)"
+    [ -n "$ac_overrides" ] && local aco="$(for ar in $ac_overrides; do echo $ar; done | ${__awk} '{ printf "%s \\\\ \\n",$0 }')"
+    local temp_fullcf="$(echo "$__configure $cf" | ${__awk} '{ printf "%s\\n",$0 }')"
+    temp_fullcf="$(echo "${aco}${temp_fullcf}")"
+    # Remove trailing whitespace and \n
+    local fullcf="${temp_fullcf%\\*}"
+    # end
+    if [ $mipspro -eq 0 ]; then
+	local compiler_temp="$(gcc --version 2>&1 | ${__sed} -n '1,1p')" 
+	local compiler="gcc ${compiler_temp##* }"
+    else # not gcc
+	if [ "$_os" = "irix53" ]; then
+	    local compiler="Irix 5.3 IDO"
+	else
+	    local compiler="$(cc -version 2>&1)"
+	fi
+	if [ "$CXX" = "g++" ]; then
+	    # SGI cc with gnu g++
+	    local compiler_temp="$(g++ --version 2>&1 | ${__sed} -n '1,1p')" 
+	    local compiler="$((echo $compiler; echo g++ ${compiler_temp##* }) | ${__awk} '{ printf "%s\\n",$0 }')"
+	    local compiler="${compiler%\\*}"
+	fi
+    fi
+    local pkgnam_temp=$(${__grep} 'pkgname=' $metadir/pkgdef)
+    local pkgnam=$(_upls ${pkgnam_temp#pkgname=*})
+    local vendor_temp=$(${__grep} 'pkgvendor=' $metadir/pkgdef)
+    local vendor=$(_upls ${vendor_temp#pkgvendor=*})
+    local packager="${pkgedby} <${email}>"
+    # Compute SHA1 sums for all source entries
+    local snum
+    local path
+    local file
+    local source_sha1sum
+    local temp_source_sha1sum=""
+    for ((snum=0; $snum < ${#source[@]}; snum++))
+    do
+	path="$(get_source_path $snum)"
+	file="$(get_source_filename $snum)"
+	(cd "$path"; ${__sha1sum} "$file") >> $metadir/sums
+    done
+    [ -r "$metadir/sums" ] && temp_source_sha1sum="$(cat $metadir/sums | ${__awk} '{ printf "%s\\n",$0 }')"
+    source_sha1sum="${temp_source_sha1sum%\\*}"
+    # End of SHA1 sum computing
+    local temp_extracted_env="$(${__sed} -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|${__grep} ^ENV|${__sed} -e 's/ENV //g'|${__awk} '{ printf "%s\\n",$0 }' && ${__rm} -f /tmp/env.sh)"
+    # Remove trailing \n
+    local extracted_env="${temp_extracted_env%\\*}"
+    if [ -r ${depends}_all ]; then
+	local temp_deps="$(${__cat} ${depends}_all | ${__grep} -v $pkgnam | ${__grep} $pkgprefix | ${__sed} -e "s/.*${pkgprefix}//" | ${__cut} -d. -f1 | ${__sort} -u | ${__awk} '{ printf "%s\\n",$0 }')"
+    else
+	local temp_deps=""
+    fi
+    local deps="${temp_deps%\\*}"
+    ${__mkdir} -p $relmetadir
+    ${__gsed} -e "s;%%PKGNAME%%;${pkgnam};g" \
+	-e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
+	-e "s;%%CONFIGURE%%;${fullcf};g" \
+	-e "s;%%COMPILER%%;${compiler};g" \
+	-e "s;%%VENDOR%%;${vendor};g" \
+	-e "s;%%PKGEDBY%%;${packager};g" \
+	-e "s;%%SOURCE_SHA1SUM%%;${source_sha1sum};g" \
+	-e "s;%%ENVIRONMENT%%;${extracted_env};g" \
+	-e "s;%%DEPENDENCIES%%;${deps};g" \
+	    ${metadir}/${rn} > "$relmetadir/${topdir}.txt"
 }
 
 # auto_dist(): Add idb & spec files to stagedir
