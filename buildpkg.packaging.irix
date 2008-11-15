@@ -654,6 +654,8 @@ create_idb()
     fetch_ops
     parse_def
 
+    local temp
+
     # hackish - FIXME perhaps?
     local pcpos=${#pc[@]} # First vacant position in the subsys list array $pc
 
@@ -688,6 +690,14 @@ create_idb()
     echo "f 0644 root sys ${metainstalldir:1}dist/$topdir-$version-$pkgver/$topdir.spec ${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec ${pkgname}.opt.dist" >>$idbfile
     echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.idb" >> $metadir/files.tmp
     echo "${metaprefix}dist/$topdir-$version-$pkgver/$topdir.spec" >> $metadir/files.tmp
+
+    # Go through each subsys and add any missing dir entries
+    # This must go here, after the idb file is created and before
+    # doing the final sort on the idb file.
+    for temp in $(${__awk} '{ print $7 }' $idbfile | ${__sort} -u)
+    do
+	auto_dir $temp
+    done
 
     ${__sort} +4u -6 < $idbfile > $metadir/idbtemp
     lines=$(wc -l < $metadir/idbtemp)
@@ -1109,6 +1119,64 @@ auto_rel()
 	-e "s;%%ENVIRONMENT%%;${extracted_env};g" \
 	-e "s;%%DEPENDENCIES%%;${deps};g" \
 	    ${rn} > "$relmetadir/${topdir}.txt"
+}
+
+# auto_dir(): Make sure all necessary dir entries are in prototype
+# param: $1 = secname
+# To avoid an endless amount of dir entries in the pkgdef this
+# function will try to automatically determine all the needed
+# entries and then add anyone missing
+auto_dir()
+{
+    local secname=$1
+
+    # Currently there's no way to tell what would be the right
+    # permissions and uid/gid for auto_dir added directories.
+    # These are good defaults, if there are directories that need specific
+    # permissions or uid/gid then they should be added to the pkgdef file
+    # instead.
+    local autodir_perms="755"
+    local autodir_uid="root"
+    local autodir_gid="sys"
+
+    local fdirs
+    local ddirs
+    local i
+    local j
+
+    fdirs=$(${__awk} '/^[fl]/ { print $6 }' $idbfile | ${__sed} -e 's,\(.*\)/.*$,\1,' | ${__sort} -u)
+    ddirs=$(${__awk} '/^d/ { print $6 }' $idbfile | ${__sort} -u)
+
+    for i in $fdirs
+    do
+	# Ugly, but we need to strip first in the while loop to be able to
+	# determine exit condition properly
+	local path_comp="$i/dummy"
+	local done=0
+	# for each fdir we verify that all path components have dir entries
+	# by checking with ddirs. If one is missing it is added
+	while [ $done -eq 0 ]
+	do
+	    # To see if we're done the string must be the same after stripping
+	    [ "$path_comp" = "${path_comp%/*}" ] && done=1
+	    path_comp=${path_comp%/*}
+	    #echo "auto_dir: Checking $path_comp"
+	    local found=0
+	    for j in $ddirs
+	    do
+		if [ "$path_comp" = "$j" ]; then
+		    found=1
+		    break
+		fi
+	    done
+	    if [ "$found" -eq 0 ]; then
+		# No match, we must add an entry
+		ddirs="$(echo $ddirs $path_comp)"
+		add_dir "$path_comp" $secname $autodir_perms $autodir_uid $autodir_gid # Add dir entry
+		echo "auto_dir: Adding $path_comp for $secname"
+	    fi
+	done
+    done
 }
 
 # auto_dist(): Add idb & spec files to stagedir
