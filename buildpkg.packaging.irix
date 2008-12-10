@@ -1144,8 +1144,8 @@ auto_dir()
     local i
     local j
 
-    fdirs=$(${__awk} '/^[fl]/ { print $6 }' $idbfile | ${__sed} -e 's,\(.*\)/.*$,\1,' | ${__sort} -u)
-    ddirs=$(${__awk} '/^d/ { print $6 }' $idbfile | ${__sort} -u)
+    fdirs=$(${__grep} $secname $idbfile | ${__awk} '/^[fl]/ { print $6 }' | ${__sed} -e 's,\(.*\)/.*$,\1,' | ${__sort} -u)
+    ddirs=$(${__grep} $secname $idbfile | ${__awk} '/^d/ { print $6 }' | ${__sort} -u)
 
     for i in $fdirs
     do
@@ -1172,7 +1172,7 @@ auto_dir()
 	    if [ "$found" -eq 0 ]; then
 		# No match, we must add an entry
 		ddirs="$(echo $ddirs $path_comp)"
-		add_dir "$path_comp" $secname $autodir_perms $autodir_uid $autodir_gid # Add dir entry
+		add_dir "$path_comp" ${secname#.*} $autodir_perms $autodir_uid $autodir_gid # Add dir entry
 		echo "auto_dir: Adding $path_comp for $secname"
 	    fi
 	done
