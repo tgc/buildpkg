@@ -64,6 +64,7 @@ usedepend=1 # Don't use depend file even if it's available
 usescripts=1 # Don't add ops even if they're available
 ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area
 include_source=0 # Include source[x] in the opt.src subsystem and not just patch[x]
+useautodir=1 # Enable or disable the auto_dir run
 
 # vendor & contact information to be added in relnotes
 pkgedby="Tom G. Christensen"
@@ -694,10 +695,12 @@ create_idb()
     # Go through each subsys and add any missing dir entries
     # This must go here, after the idb file is created and before
     # doing the final sort on the idb file.
-    for temp in $(${__awk} '{ print $7 }' $idbfile | ${__sort} -u)
-    do
-	auto_dir $temp
-    done
+    if [ $useautodir -eq 1 ]; then
+	for temp in $(${__awk} '{ print $7 }' $idbfile | ${__sort} -u)
+	do
+	    auto_dir $temp
+	done
+    fi
 
     ${__sort} +4u -6 < $idbfile > $metadir/idbtemp
     lines=$(wc -l < $metadir/idbtemp)
