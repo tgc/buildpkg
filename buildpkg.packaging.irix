@@ -665,25 +665,13 @@ create_idb()
 	pc[$pcpos]="opt.src"
 	let "pcpos = pcpos + 1"
     fi
-    # HACK: relnotes cannot be updated before auto_deps has run
-    # but auto_deps needs the idb file.
-    # We'll create an empty placeholder so satisfy the code below that
-    # checks for releasenotes and updates the idb file.
-    # This snippet was taken from auto_rel and should be kept in sync
-    for i in relnotes relnotes.${_os} relnotes.txt relnotes.${_os}.txt;
-    do
-	[ -r ${metadir}/${i} ] && rn=$i
-    done
-    if [ -r ${metadir}/${rn} ]; then
-	local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
-	${__mkdir} -p $relmetadir
-	echo "" > ${relmetadir}/${topdir}.txt
-    fi
-    if [ -d "${stagedir}${metainstalldir}relnotes" ]; then # We have releasenotes, add them to idb file
-	add_files "${metaprefix}relnotes" opt.relnotes - root sys ""
-	pc[$pcpos]="opt.relnotes"
-	let "pcpos = pcpos + 1"
-    fi
+
+    # We unconditionally assume that relnotes are installed now that we
+    # always use the global template as a fallback in auto_rel
+    add_files "${metaprefix}relnotes" opt.relnotes - root sys ""
+    pc[$pcpos]="opt.relnotes"
+    let "pcpos = pcpos + 1"
+
     # spec & idb files are added unconditionally
     pc[$pcpos]="opt.dist"
     # Add entries for the spec & idb files (opt.dist), they will be installed later, after they've actually been created
@@ -1051,9 +1039,9 @@ auto_rel()
 
     for i in relnotes relnotes.${_os} relnotes.txt relnotes.${_os}.txt;
     do
-	[ -r ${metadir}/${i} ] && rn=${metadir}/$i
+	[ -r ${metadir}/${i} ] && rn=${metadir}/${i}
     done
-    if [ ! -r ${rn} ]; then
+    if [ -z ${rn} ]; then
 	echo "auto_rel: Using global relnotes template"
 	rn=${BUILDPKG_BASE}/scripts/relnotes.template.irix
     fi
