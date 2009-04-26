@@ -668,6 +668,9 @@ create_idb()
 
     # We unconditionally assume that relnotes are installed now that we
     # always use the global template as a fallback in auto_rel
+    local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
+    ${__mkdir} -p $relmetadir	 
+    echo "" > ${relmetadir}/${topdir}.txt
     add_files "${metaprefix}relnotes" opt.relnotes - root sys ""
     pc[$pcpos]="opt.relnotes"
     let "pcpos = pcpos + 1"
