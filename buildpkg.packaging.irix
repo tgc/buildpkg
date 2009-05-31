@@ -54,9 +54,10 @@ dostrip=1
 dostrip_static=0 # Atleast std. Irix strip seems to mangle archives if strip -f is used
 
 # Setup default args for strip. They match /usr/bin/strip in Irix 6.2
-# Change these if you're using strip from GNU Binutils (recommended)
+# -f is undocumented on 5.3 and renders DSOs unlinkable.
+# Change these if you're using strip from GNU Binutils (*not* recommended)
 strip_elf_args="" # GNU default is -g
-strip_shared_args="-f" # GNU default is --strip-unneeded
+strip_shared_args="-f" # GNU default is -g
 strip_static_args="-f" # GNU default is -g
 
 # Other
