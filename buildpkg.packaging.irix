@@ -1364,6 +1364,10 @@ generic_pack()
     make_dist
 }
 
+# Simple helpers for build.sh
+irix53() { [ "$_os" = "irix53" ]; }
+irix62() { [ "$_os" = "irix62" ]; }
+irix65() { [ "$_os" = "irix65" ]; }
 
 # vim: set filetype=sh : #
 # vim: set sts=4 : #
