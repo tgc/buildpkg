@@ -734,12 +734,13 @@ generic_prep()
 # params: $1 = dir to descend to *inside* "source" - optional
 generic_build()
 {
+    local my_ac_overrides="$platform_ac_overrides $ac_overrides"
     setdir ${srcdir}/${topsrcdir}/$1
 
     if [ $no_configure -eq 0 ]; then
 	if [ $generic_configure -eq 1 ]; then
 	    local acvar
-	    for acvar in $ac_overrides
+	    for acvar in $my_ac_overrides
 	    do
 		export $acvar
 	    done

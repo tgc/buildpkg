@@ -1040,6 +1040,7 @@ auto_rel()
 {
     local i
     local rn
+    local my_ac_overrides="$platform_ac_overrides $ac_overrides"
 
     for i in relnotes relnotes.${_os} relnotes.txt relnotes.${_os}.txt;
     do
@@ -1052,7 +1053,7 @@ auto_rel()
     local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
     # compute configure info for relnotes
     local cf="$(_upls $configure_args)"
-    [ -n "$ac_overrides" ] && local aco="$(for ar in $ac_overrides; do echo $ar; done | ${__awk} '{ printf "%s \\\\ \\n",$0 }')"
+    [ -n "$my_ac_overrides" -a $no_configure -eq 0 ] && local aco="$(for ar in $my_ac_overrides; do echo $ar; done | ${__awk} '{ printf "%s \\\\ \\n",$0 }')"
     local temp_fullcf="$(echo "$__configure $cf" | ${__awk} '{ printf "%s\\n",$0 }')"
     temp_fullcf="$(echo "${aco}${temp_fullcf}")"
     # Remove trailing whitespace and \n
@@ -1293,9 +1294,10 @@ auto_deps()
 #
 run_configure()
 {
-    #eval "$ac_overrides ./configure $(_upls $configure_args)"
+    local my_ac_overrides="$platform_ac_overrides $ac_overrides"
+    #eval "$my_ac_overrides ./configure $(_upls $configure_args)"
     local acvar
-    for acvar in $ac_overrides
+    for acvar in $my_ac_overrides
     do
 	export $acvar
     done
