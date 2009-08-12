@@ -967,11 +967,11 @@ auto_src()
 	    if [ ! -z ${patch[$pnum]} ]; then # They didn't give us an empty string
 		if [ "${patch[$pnum]:0:1}" != "/" ]; then # We have a relative pathname
 		    # expand to absolute
-		    patch[$pnum]=$patchdir/${patch[$pnum]}
+		    patch[$pnum]=$(get_source_absfilename ${patch[$pnum]})
 		fi # We are now sure that $patch[$pnum] contains file with absolute path
 		if [ -r ${patch[$pnum]} ]; then # file is readable
 		    echo "Copying patch[$pnum] - ${patch[$pnum]}"
-		    ${__cp} ${patch[$pnum]} $distsrcdir
+		    ${__cp} -p ${patch[$pnum]} $distsrcdir
 		else
 		    error $E_BAD_FILE patch
 		fi
@@ -987,8 +987,8 @@ auto_src()
 	local snum=0
 	for ((snum=0; $snum < $numsource; snum++))
 	do
-	    local absfile=$(get_source_absfilename $snum)
-	    ${__cp} $absfilename $distsrcdir
+	    local absfile=$(get_source_absfilename ${source[$snum]})
+	    ${__cp} -p $absfilename $distsrcdir
 	done
     fi
 }
@@ -1088,8 +1088,8 @@ auto_rel()
     local temp_source_sha1sum=""
     for ((snum=0; $snum < ${#source[@]}; snum++))
     do
-	path="$(get_source_path $snum)"
-	file="$(get_source_filename $snum)"
+	path="$(get_source_path ${source[$snum]})"
+	file="$(get_source_filename ${source[$snum]})"
 	(cd "$path"; ${__sha1sum} "$file") >> $metadir/sums
     done
     [ -r "$metadir/sums" ] && temp_source_sha1sum="$(cat $metadir/sums | ${__awk} '{ printf "%s\\n",$0 }')"

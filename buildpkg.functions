@@ -249,7 +249,7 @@ patch()
     if [ ! -z ${patch[$pnum]} ]; then # They didn't give us an empty string
 	if [ "${patch[$pnum]:0:1}" != "/" ]; then # We have a relative pathname
 	    # expand to absolute
-	    patch[$pnum]=$patchdir/${patch[$pnum]}
+	    patch[$pnum]=$(get_source_absfilename ${patch[$pnum]})
 	fi # We are now sure that $patch[$pnum] contains file with absolute path
 	echo "Processing patch[$pnum] - ${patch[$pnum]}"
 	if [ -r ${patch[$pnum]} ]; then # file is readable
@@ -266,11 +266,11 @@ patch()
 }
 
 # get_source_filename(): Find filename for given sourceid
-# params: $1 = source number (arrayindex)
+# params: $1 = file to resolve (ie. source[x] or patch[x])
 get_source_filename()
 {
-    local snum=$1
-    local file="${source[$snum]##*/}" # Extract filename part
+    local source=$1
+    local file="${source##*/}" # Extract filename part
 
     if [ -z "$file" ]; then
 	error  $E_BAD_FILE get_source_filename
@@ -280,13 +280,13 @@ get_source_filename()
 }
 
 # get_source_path(): Find local path for given sourceid
-# params: $1 = source number (arrayindex)
+# params: $1 = file to resolve (ie. source[x] or patch[x])
 get_source_path()
 {
-    local snum=$1
+    local source=$1
     local path_return=""
-    local path="${source[$snum]%/*}" # Extract path part
-    local file=$(get_source_filename $snum) # Extract filename part
+    local path="${source%/*}" # Extract path part
+    local file=$(get_source_filename "$source") # Extract filename part
 
     if [ -n "$path" ]; then
 	# We have a path component, could be relative, url or abs path
@@ -317,13 +317,13 @@ get_source_path()
 }
 
 # get_source_absfilename(): Wrapper for get_source_filename and get_source_path
-# params: $1 = source number (arrayindex)
+# params: $1 = file to resolve (ie. source[x] or patch[x])
 # Note this wrapper will exit with $E_BAD_FILE if the absolute filename is not
 # readable
 get_source_absfilename()
 {
-    local snum=$1
-    local absfilename="$(get_source_path $snum)/$(get_source_filename $1)"
+    local source=$1
+    local absfilename="$(get_source_path "$source")/$(get_source_filename $1)"
     if [ -r "$absfilename" ]; then
 	echo "$absfilename"
     else
@@ -333,21 +333,44 @@ get_source_absfilename()
 }
 
 # fetch_source(): Fetch a sourcefile from an url
-# params: $1 = source number (arrayindex)
+# params: $1 = URL to fetch
 fetch_source()
 {
-    local snum=$1
-    local file=$(get_source_filename $snum)
-    local path=$(get_source_path $snum)
+    local url=$1
+    local file=$(get_source_filename "$url")
+    local path=$(get_source_path "$url")
 
     if [ ! -r "$path/$file" ]; then
-	echo "fetch_source: Downloading ${source[$snum]}"
+	echo "fetch_source: Downloading $url"
 	if [ -x ${__curl} ]; then
-	    ${__curl} -# -L --retry 2 -C - -o $srcfiles/$file "${source[$snum]}"
+	    ${__curl} -# -L --retry 2 -C - -o $srcfiles/$file "$url"
 	else
 	    error $E_MISSING_EXE fetch_source
 	fi
     fi
+}
+
+# get_files(): Fetch source files and patches from URLs
+# params: none
+# Any source or patch entries with URL's will be processed and downloaded
+# as necessary.
+get_files()
+{
+    local numsource=${#source[@]}
+    local numpatch=${#patch[@]}
+    local source
+    local array
+    local counter
+
+    local idx=0
+    let counter=$numsource+$numpatch
+    array=( ${source[@]} ${patch[@]} )
+    while [ $idx -lt ${counter} ]
+    do
+	source=${array[$idx]}
+	[ -n "$(echo $source | grep '://')" ] && fetch_source $source
+	let idx=idx+1
+    done
 }
 
 # unpack(): Unpack source
@@ -356,7 +379,7 @@ fetch_source()
 # .tar, .tgz, .gz, .bz2, zip and .Z supported
 unpack()
 {
-    local snum=$1
+    local source=${source[$1]}
     local filename
     local suffix
     local absfile
@@ -365,17 +388,17 @@ unpack()
 
     # If source contains an URL then first
     # download the file to $srcfiles
-    if [ -n "$(echo ${source[$snum]} | grep '://')" ]; then
+    if [ -n "$(echo $source | grep '://')" ]; then
 	# Yep it's an url
-	fetch_source $snum
+	fetch_source "$source"
     fi
 
-    filename="$(get_source_filename $snum)"
+    filename="$(get_source_filename "$source")"
     suffix=${filename##*.} # Strip down to filename suffix (strip down to the last .)
     echo "Unpacking $filename"
     # Note observe order here, since get_source_absfilename can exit with $E_BAD_FILE this
     # provides context for resolving!
-    absfile="$(get_source_absfilename $snum)"
+    absfile="$(get_source_absfilename "$source")"
     # Catch any badness from the get_source function stack
     [ "$?" != "0" ] && error $E_BAD_FILE unpack
     # Determine filetype and unpack
@@ -707,6 +730,11 @@ compute_octal()
 generic_prep()
 {
     clean source
+
+    # Sweep ${#source[@]} and ${#patch[@]} for URL's and download any files
+    # needed
+    get_files
+
     unpack 0 
 
     # Verify that ${patch[$pnum]} is defined
