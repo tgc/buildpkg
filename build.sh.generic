@@ -1,6 +1,6 @@
 #!/bin/bash
 # This is a buildpkg build.sh script
-# Copyright (C) 2003-2008 Tom G. Christensen <tgc@jupiterrise.com>
+# Copyright (C) 2003-2009 Tom G. Christensen <tgc@jupiterrise.com>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
