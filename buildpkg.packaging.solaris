@@ -1,6 +1,6 @@
 # Function library for buildpkg framework
 # It adds support for creating Solaris packages in 'sysv' format
-# Copyright (C) 2003-2008 Tom G. Christensen <tgc@jupiterrise.com>
+# Copyright (C) 2003-2009 Tom G. Christensen <tgc@jupiterrise.com>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -397,8 +397,8 @@ auto_rel()
     local snum=0
     while [ $snum -lt ${#source[@]} ]
     do
-	path="$(get_source_path $snum)"
-	file="$(get_source_filename $snum)"
+	path="$(get_source_path ${source[$snum]})"
+	file="$(get_source_filename ${source[$snum]})"
 	(cd "$path"; ${__sha1sum} "$file") >> $metadir/sums.${secname}
 	let snum=snum+1
     done
