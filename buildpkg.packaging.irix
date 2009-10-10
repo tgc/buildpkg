@@ -1115,6 +1115,19 @@ auto_rel()
 	-e "s;%%ENVIRONMENT%%;${extracted_env};g" \
 	-e "s;%%DEPENDENCIES%%;${deps};g" \
 	    ${rn} > "$relmetadir/${topdir}.txt"
+
+    # Add a ChangeLog if it exists
+    if [ -r $metadir/ChangeLog ]; then
+	echo "auto_rel: Adding ChangeLog to relnotes"
+	# See if we can find an entry for this build otherwise complain
+	if [ -z "${__grep} ${version}-${pkgver}$" ]; then
+	    echo "autorel: WARNING: Did not find ChangeLog entry for ${version}-${pkgver}!"
+	fi
+	echo >> "$relmetadir/${topdir}.txt"
+	cat $metadir/ChangeLog >> "$relmetadir/${topdir}.txt"
+    else
+	echo "auto_rel: WARNING: ChangeLog is missing!"
+    fi
 }
 
 # auto_dir(): Make sure all necessary dir entries are in prototype

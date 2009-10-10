@@ -426,6 +426,19 @@ auto_rel()
 	-e "s;%%DEPENDENCIES%%;${deps};g" \
 	    ${rn} > "$relmetadir/${secname}.txt"
 
+    # Add a ChangeLog if it exists
+    if [ -r $metadir/ChangeLog ]; then
+        echo "auto_rel: Adding ChangeLog to relnotes"
+        # See if we can find an entry for this build otherwise complain
+        if [ -z "${__grep} ${version}-${pkgver}$" ]; then
+            echo "autorel: WARNING: Did not find ChangeLog entry for ${version}-${pkgver}!"
+        fi
+        echo >> "$relmetadir/${secname}.txt"
+        cat $metadir/ChangeLog >> "$relmetadir/${secname}.txt"
+    else
+        echo "auto_rel: WARNING: ChangeLog is missing!"
+    fi
+
     ### Add the relnotes to the prototype file
     add_dir $defaultperms $defaultuid $defaultgid "${metaprefix}relnotes" $secname
     add_proto $defaultperms $defaultuid $defaultgid "${metaprefix}relnotes/$secname-$version-$pkgver" $secname
@@ -473,6 +486,7 @@ auto_dir()
 	    if [ "$found" -eq 0 ]; then
 		# No match, we must add an entry
 		ddirs="$(echo $ddirs $path_comp)"
+		### FIXME defaultperms, defaultuid and defaultgid as essentially uninitialized here!
 		add_dir $defaultperms $defaultuid $defaultgid "$path_comp" $secname # Add dir entry
 		echo "auto_dir: Adding $path_comp for $secname"
 	    fi
