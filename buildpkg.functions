@@ -544,7 +544,7 @@ symlink_man()
 	    OIFS="$IFS"
 	    IFS="
 	    "
-	    manpages="$(echo $i/*)"
+	    manpages="$(${__ls} $i/* 2>/dev/null)"
 	    for manpage in $manpages
 	    do
 		solink="$(${__head} -n 1 $manpage)"
