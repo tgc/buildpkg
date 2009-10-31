@@ -570,13 +570,13 @@ fix_man()
     local TARGET
 
     echo "Formatting manpages"
-    for i in man?
+    for i in $(${__ls} -d man? 2>/dev/null)
     do
 	if [ -d $i ]; then
 	    catdir=cat${i##man}
 	    ${__mkdir} $catdir
 	    cd $i
-	    for manpage in *
+	    for manpage in $(${__ls} * 2>/dev/null)
 	    do
 		if [ -L "$manpage" ]; then
 		    TARGET=$(${__ls} -l "$manpage" | ${__awk} '{ print $NF }')
@@ -613,11 +613,11 @@ compress_man()
     fi
 
     echo "Compressing manpages"
-    for i in [cm]a[nt]?
+    for i in $(${__ls} -d [cm]a[nt]? 2>/dev/null)
     do
 	if [ -d $i ]; then
 	    cd $i
-	    for manpage in *
+	    for manpage in $(${__ls} * 2>/dev/null)
 	    do
 		suffix="${manpage##*.}"
 		if [ "$suffix" != "gz" -a "$suffix" != "Z" ]; then #probably uncompressed...
