@@ -63,6 +63,7 @@ strip_static_args="-f" # GNU default is -g
 # Other
 usedepend=1 # Don't use depend file even if it's available
 usescripts=1 # Don't add ops even if they're available
+useupdates=1 # Enable/disable the use of an updates file if available
 ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area
 include_source=0 # Include source[x] in the opt.src subsystem and not just patch[x]
 useautodir=1 # Enable or disable the auto_dir run
@@ -724,7 +725,7 @@ create_spec()
     fetch_subsysdesc
     fetch_depends
     fetch_replaces
-    fetch_updates
+    [ $useupdates -eq 1 ] && fetch_updates
     spec_header $pkgname "$name $version-${pkgver}${shortdesc}" > $specfile
     local pcsize=${#pc[@]}
     local pctopsize=${#pctop[@]}
