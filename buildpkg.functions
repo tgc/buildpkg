@@ -358,7 +358,7 @@ get_files()
 {
     local numsource=${#source[@]}
     local numpatch=${#patch[@]}
-    local source
+    local src
     local array
     local counter
 
@@ -367,8 +367,8 @@ get_files()
     array=( ${source[@]} ${patch[@]} )
     while [ $idx -lt ${counter} ]
     do
-	source=${array[$idx]}
-	[ -n "$(echo $source | grep '://')" ] && fetch_source $source
+	src=${array[$idx]}
+	[ -n "$(echo $src | grep '://')" ] && fetch_source $src
 	let idx=idx+1
     done
 }
