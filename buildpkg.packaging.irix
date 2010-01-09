@@ -30,8 +30,8 @@ SHOWFILES="/usr/sbin/showfiles"
 HOSTNAME=/usr/bsd/hostname
 
 # Configuration vars
-imageconf=$buildpkgbase/scripts/image.conf
-subsysconf=$buildpkgbase/scripts/subsys.conf
+imageconf=$buildpkgscripts/image.conf
+subsysconf=$buildpkgscripts/subsys.conf
 idbfile=$metadir/$topdir.idb
 specfile=$metadir/$topdir.spec
 depends=$metadir/depends
@@ -140,7 +140,7 @@ configure_args='--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefi
 META_CLEAN="$topdir.spec $topdir.idb files.tmp ${depends##*/}_auto ${depends##*/}_all sums"
 
 # Host specific configuration
-[ -r $buildpkgbase/scripts/config.$($HOSTNAME -s).irix ] && . $buildpkgbase/scripts/config.$($HOSTNAME -s).irix
+[ -r $buildpkgscripts/config.$($HOSTNAME -s).irix ] && . $buildpkgscripts/config.$($HOSTNAME -s).irix
 
 distfile='$topdir-$version-$pkgver.tgc-$os-$cpu-$pkgdirdesig.tardist'
 
@@ -1049,7 +1049,7 @@ auto_rel()
     done
     if [ -z ${rn} ]; then
 	echo "auto_rel: Using global relnotes template"
-	rn=${BUILDPKG_BASE}/scripts/relnotes.template.irix
+	rn=$buildpkgscripts/relnotes.template.irix
     fi
     local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
     # compute configure info for relnotes

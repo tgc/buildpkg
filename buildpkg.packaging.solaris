@@ -64,7 +64,7 @@ os=sunos`${__uname} -r`
 #esac
 
 # Default pkginfo.in file
-pkginfo=$buildpkgbase/scripts/pkginfo.in
+pkginfo=$buildpkgscripts/pkginfo.in
 
 # Variables that control functionality
 usedepend=1 # default to looking for a depend file in $metadir
@@ -94,7 +94,7 @@ _infodir=share/info
 configure_args='--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefix}/${_infodir}'
 
 # Host specific configuration
-[ -r $buildpkgbase/scripts/config.`hostname`.solaris ] && . $buildpkgbase/scripts/config.`hostname`.solaris
+[ -r $buildpkgscripts/config.`hostname`.solaris ] && . $buildpkgscripts/config.`hostname`.solaris
 
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<arch>-<pkgdirdesig>
@@ -357,7 +357,7 @@ auto_rel()
     # No local relnotes use global template
     if [ ! -r "${rn}" ]; then
 	echo "auto_rel: Using global relnotes template"
-	rn=${BUILDPKG_BASE}/scripts/relnotes.template.irix
+	rn=$buildpkgscripts/relnotes.template.irix
     fi
     local relmetadir=${stagedir}${metainstalldir}relnotes/$secname-$version-$pkgver
     ### compute configure info for relnotes

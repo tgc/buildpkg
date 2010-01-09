@@ -24,7 +24,15 @@
 #
 buildpkgbase=${BUILDPKG_BASE-'x'}
 if [ "$buildpkgbase" == "x" ]; then
-    echo "You *Must* define BUILDPKG_BASE environment variable"
+    echo "You *must* define BUILDPKG_BASE environment variable"
+    exit 1
+fi
+
+# We rely on an environment variable called BUILDPKG_SCRIPTS to
+# define where the buildpkg code is located
+buildpkgscripts=${BUILDPKG_SCRIPTS-'x'}
+if [ "$buildpkgscripts" == "x" ]; then
+    echo "You *must* define BUILDPKG_SCRIPTS environment variable"
     exit 1
 fi
 
@@ -46,11 +54,10 @@ fi
 #		patches must be in uncompressed format
 
 # Define tools programs in __ prefixed namespace
-. $BUILDPKG_BASE/scripts/buildpkg.tools
+. $BUILDPKG_SCRIPTS/buildpkg.tools
 
 # Define defaults
 pkgdir=${PWD##*/} # topdir under $BUILDPKG_BASE
-buildpkgbase=$BUILDPKG_BASE
 stagedir=$buildpkgbase/$pkgdir/stage
 srcdir=$buildpkgbase/$pkgdir/src
 patchdir=$srcdir # Allow the possibility of easily putting a load of patches in a different location
@@ -955,9 +962,9 @@ generic_install_perl()
 # This function should be implemented in the pr. packaging system
 # function library.
 case $OSTYPE in
-    solaris*)	. $buildpkgbase/scripts/buildpkg.packaging.solaris
+    solaris*)	. $buildpkgscripts/buildpkg.packaging.solaris
 		;;
-    irix*)	. $buildpkgbase/scripts/buildpkg.packaging.irix
+    irix*)	. $buildpkgscripts/buildpkg.packaging.irix
 		;;
     *)		echo "No packaging system function library available for this OS"
 		;;

@@ -4,7 +4,7 @@
 #
 # params: $1=topdir ie. bash
 #
-. ${BUILDPKG_BASE}/scripts/buildpkg.functions
+. ${BUILDPKG_SCRIPTS}/buildpkg.functions
 
 REQ_DIRS="stage src meta"
 
@@ -22,17 +22,17 @@ do
     ${__mkdir} $arg1/$i
 done
 
-${__cp} scripts/build.sh.generic $arg1/build.sh
+${__cp} $buildpkgscripts/build.sh.generic $arg1/build.sh
 if [ "$(${__uname} -s)" == "IRIX" -o "$(${__uname} -s)" == "IRIX64" ]; then
     ${__sed} -e 's;bin/bash;usr/tgcware/bin/bash;g' $arg1/build.sh > $arg1/build.sh.tmp
     ${__mv} $arg1/build.sh.tmp $arg1/build.sh
-    ${__cp} scripts/pkgdef.template.irix $arg1/meta/pkgdef
+    ${__cp} $buildpkgscripts/pkgdef.template.irix $arg1/meta/pkgdef
 fi
 
 if [ "$(${__uname} -s)" == "SunOS" ]; then
-    ${__cp} scripts/pkgdef.template $arg1/meta/pkgdef
+    ${__cp} $buildpkgscripts/pkgdef.template $arg1/meta/pkgdef
 fi
 
-${__cp} scripts/relnotes.template.irix $arg1/meta/relnotes
+${__cp} $buildpkgscripts/relnotes.template.irix $arg1/meta/relnotes
 # Make build script executable
 chmod 755 $arg1/build.sh
