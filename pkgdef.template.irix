@@ -1,5 +1,5 @@
 [common]
-pkgname="$pkgprefix""$topdir"
+pkgname="${pkgprefix}${topdir}"
 name="$topdir"
 pkgver="$pkgver"
 pkgvendor="http://change/me/please"
