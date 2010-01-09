@@ -51,17 +51,6 @@ email=swpkg@jupiterrise.com
 
 arch=`uname -p`
 os=sunos`${__uname} -r`
-# Courtesy of nba (see dm2conv/solaris/mkpkg.sh)
-#case $os in
-#5.[0123456]|5.5.1)
-#    os=sunos`echo $os | sed s/5./2./`
-#    ;;
-#5.*)
-#    os=sunos`echo $os | sed s/5.//`
-#    ;;
-#*)
-#    echo I do not know how; exit 1;;
-#esac
 
 # Default pkginfo.in file
 pkginfo=$buildpkgscripts/pkginfo.in
