@@ -1,0 +1,29 @@
+===========
+What is it?
+===========
+buildpkg is a collection of bourne shell script code that implements a
+framework for easy scripting a package build for IRIX or Solaris in
+a repeatable manner.
+
+Anyone familiar with how an rpm specfile works will see the similarities
+but basically it works on the premise that everything is built into a
+staging area and metadata describing the final package layout is used to
+automatically generate the necessary metadata for the native packageformat.
+By design it is not possible to hand-tweak the generated metadata as it is
+always regenerated, any tweaks must be implemented through metadata in the
+buildsystem.
+
+Dependencies are automatically extracted from files in the stagedir
+(filtering is possible) and it's also possible to manually add hidden
+dependencies that cannot be extracted automatically.
+
+There's also steps that automcatically compiles manpages and compresses them.
+It can handle symlinked manpages and even manpages that are just links to other
+manpages (ie. using the nroff .so command).
+
+===================
+License and contact
+===================
+buildpkg is released under the GNU GPLv3.  Please see the COPYING file for license details.
+
+Tom G. Christensen <tgc@jupiterrise.com>
