@@ -8,22 +8,37 @@ a repeatable manner.
 Anyone familiar with how an rpm specfile works will see the similarities
 but basically it works on the premise that everything is built into a
 staging area and metadata describing the final package layout is used to
-automatically generate the necessary metadata for the native packageformat.
-By design it is not possible to hand-tweak the generated metadata as it is
-always regenerated, any tweaks must be implemented through metadata in the
-buildsystem.
+automatically generate the necessary metadata for the native
+packageformat.  By design it is not possible to hand-tweak the generated
+metadata as it is always regenerated, any tweaks must be implemented
+through metadata in the buildsystem.
 
 Dependencies are automatically extracted from files in the stagedir
 (filtering is possible) and it's also possible to manually add hidden
 dependencies that cannot be extracted automatically.
 
-There's also steps that automcatically compiles manpages and compresses them.
-It can handle symlinked manpages and even manpages that are just links to other
-manpages (ie. using the nroff .so command).
+There's also steps that automcatically compiles manpages and compresses
+them.  It can handle symlinked manpages and even manpages that are just
+links to other manpages (ie. using the nroff .so command).
+
+===============
+Getting started
+===============
+There's a few customizations that should be done before begining to
+build packages.
+
+ * check the value of topinstalldir in buildpkg.functions
+ * check the value of pkgprefix in buildpkg.functions and
+   buildpkg.packaging.irix
+ * check tool paths in buildpkg.tools and override with a
+   <hostname>.irix or <hostname>.solaris config file.
+ * for building perl modules you must also adjust paths
+   in generic_install_perl
 
 ===================
 License and contact
 ===================
-buildpkg is released under the GNU GPLv3.  Please see the COPYING file for license details.
+buildpkg is released under the GNU GPLv3.  Please see the COPYING file
+for license details.
 
 Tom G. Christensen <tgc@jupiterrise.com>
