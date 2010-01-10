@@ -24,7 +24,7 @@ done
 
 ${__cp} $buildpkgscripts/build.sh.generic $arg1/build.sh
 if [ "$(${__uname} -s)" == "IRIX" -o "$(${__uname} -s)" == "IRIX64" ]; then
-    ${__sed} -e 's;bin/bash;usr/tgcware/bin/bash;g' $arg1/build.sh > $arg1/build.sh.tmp
+    ${__sed} -e "s;/bin/bash;$__bash;g" $arg1/build.sh > $arg1/build.sh.tmp
     ${__mv} $arg1/build.sh.tmp $arg1/build.sh
     ${__cp} $buildpkgscripts/pkgdef.template.irix $arg1/meta/pkgdef
 fi
