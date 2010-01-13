@@ -27,6 +27,8 @@ Getting started
 There's a few customizations that should be done before begining to
 build packages.
 
+ * The environment variable BUILDPKG_SCRIPTS should point to buildpkg
+ * The environment variable BUILDPKG_BASE should point to your packages
  * check the value of topinstalldir in buildpkg.functions
  * check the value of pkgprefix in buildpkg.functions and
    buildpkg.packaging.irix
