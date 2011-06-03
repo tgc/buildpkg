@@ -445,6 +445,9 @@ clean()
 		    else
 			error $E_BAD_DIR clean
 		    fi
+                    # Solaris only - We can't add this to meta since compver is usually created
+                    # during install
+                    ${__rm} -f $metadir/compver.*
 		    ;;
 	'meta')	    
 		    if [ "$(${__uname} -s)" == "SunOS" ]; then
