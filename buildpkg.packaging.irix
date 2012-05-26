@@ -1033,6 +1033,33 @@ set_configure_args()
     rel_conf_sub
 }
 
+# identify_compiler(): This outputs information about the compiler
+# params: $1 = { log }
+# This generates the compiler information used in relnotes and logging
+identify_compiler()
+{
+    local mycc
+
+    if [ $mipspro -eq 0 ]; then
+	[ -n "$CC" ] && mycc=$CC || mycc=gcc
+	[ "$1" = "log" ] && $mycc -v
+	local compiler="$($mycc -v 2>&1 | ${__sed} -n '/^gcc/p')"
+    else # not gcc
+	if [ "$_os" = "irix53" ]; then
+	    local compiler="Irix 5.3 IDO"
+	else
+	    local compiler="$(cc -version 2>&1)"
+	fi
+	if [ "$CXX" = "g++" ]; then
+	    # SGI cc with gnu g++
+	    local compiler_temp="$(g++ -v 2>&1 | ${__sed} -n '/^gcc/ s/gcc/g++/p')"
+	    local compiler="$((echo $compiler; echo $compiler_temp) | ${__awk} '{ printf "%s\\n",$0 }')"
+	    local compiler="${compiler%\\*}"
+	fi
+    fi
+    [ -z "$1" ] && echo "$compiler"
+}
+
 # auto_rel(): Fix up and add releasenotes to stagedir
 # params: none
 # This will make some substitutions on a release note template
@@ -1060,22 +1087,6 @@ auto_rel()
     # Remove trailing whitespace and \n
     local fullcf="${temp_fullcf%\\*}"
     # end
-    if [ $mipspro -eq 0 ]; then
-	local compiler_temp="$(gcc --version 2>&1 | ${__sed} -n '1,1p')"
-	local compiler="gcc ${compiler_temp##* }"
-    else # not gcc
-	if [ "$_os" = "irix53" ]; then
-	    local compiler="Irix 5.3 IDO"
-	else
-	    local compiler="$(cc -version 2>&1)"
-	fi
-	if [ "$CXX" = "g++" ]; then
-	    # SGI cc with gnu g++
-	    local compiler_temp="$(g++ --version 2>&1 | ${__sed} -n '1,1p')"
-	    local compiler="$((echo $compiler; echo g++ ${compiler_temp##* }) | ${__awk} '{ printf "%s\\n",$0 }')"
-	    local compiler="${compiler%\\*}"
-	fi
-    fi
     local pkgnam_temp=$(${__grep} 'pkgname=' $metadir/pkgdef)
     local pkgnam=$(_upls ${pkgnam_temp#pkgname=*})
     local vendor_temp=$(${__grep} 'pkgvendor=' $metadir/pkgdef)
@@ -1109,7 +1120,7 @@ auto_rel()
     ${__gsed} -e "s;%%PKGNAME%%;${pkgnam};g" \
 	-e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
 	-e "s;%%CONFIGURE%%;${fullcf};g" \
-	-e "s;%%COMPILER%%;${compiler};g" \
+	-e "s;%%COMPILER%%;$(identify_compiler);g" \
 	-e "s;%%VENDOR%%;${vendor};g" \
 	-e "s;%%PKGEDBY%%;${packager};g" \
 	-e "s;%%SOURCE_SHA1SUM%%;${source_sha1sum};g" \

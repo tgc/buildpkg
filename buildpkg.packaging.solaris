@@ -329,6 +329,32 @@ add_dir()
     echo "$dir" >> $metadir/files.tmp
 }
 
+# identify_compiler(): This outputs information about the compiler
+# params: $1 = { log }
+# This generates the compiler information used in relnotes and logging
+identify_compiler()
+{
+    local mycc
+
+    if [ $suncc -eq 0 ]; then
+	[ -n "$CC" ] && mycc=$CC || mycc=gcc
+	[ "$1" = "log" ] && $mycc -v
+	local compiler="$($mycc -v 2>&1 | ${__sed} -n '/^gcc/p')"
+    else # not gcc
+	[ -n "$CC" ] && mycc=$CC || mycc=cc
+	[ "$1" = "log" ] && $mycc -v
+	local compiler="$($mycc -version 2>&1)"
+	if [ "$CXX" = "g++" ]; then
+	    # SUN cc with gnu g++
+	    [ "$1" = "log" ] && g++ -v
+	    local compiler_temp="$(g++ -v 2>&1 | ${__sed} -n '/^gcc/ s/gcc/g++/p')"
+	    local compiler="$((echo $compiler; echo $compiler_temp) | ${__awk} '{ printf "%s\\n",$0 }')"
+	    local compiler="${compiler%\\*}"
+	fi
+    fi
+    [ -z "$1" ] && echo "$compiler"
+}
+
 # auto_rel(): Fix up and add releasenotes to stagedir
 # params: $1 = secname
 # This will make some substitutions on a release note template
@@ -356,21 +382,6 @@ auto_rel()
     temp_fullcf="$(echo "${aco}${temp_fullcf}")"
     # Remove trailing whitespace and \n
     local fullcf="${temp_fullcf%\\*}"
-    ###
-    ### compute compiler info for relnotes
-    if [ $suncc -eq 0 ]; then
-	#local compiler_temp="$(gcc --version 2>&1 | ${__sed} -n '1,1p')"
-	#local compiler="gcc ${compiler_temp##* }"
-	local compiler="$(gcc -v 2>&1 | ${__sed} -n '/^gcc/ s/ version//p')"
-    else # not gcc
-	local compiler="$(cc -version 2>&1)"
-	if [ "$CXX" = "g++" ]; then
-	    # SUN cc with gnu g++
-	    local compiler_temp="$(g++ --version 2>&1 | ${__sed} -n '1,1p')"
-	    local compiler="$((echo $compiler; echo g++ ${compiler_temp##* }) | ${__awk} '{ printf "%s\\n",$0 }')"
-	    local compiler="${compiler%\\*}"
-	fi
-    fi
     ###
     local pkgnam=$(get_pkgname $secname)
     local vendor=$(get_pkgvendor $secname)
@@ -407,7 +418,7 @@ auto_rel()
     ${__gsed} -e "s;%%PKGNAME%%;${pkgnam};g" \
 	-e "s;%%SOURCE_AND_VER%%;${topdir}-${version};g" \
 	-e "s;%%CONFIGURE%%;${fullcf};g" \
-	-e "s;%%COMPILER%%;${compiler};g" \
+	-e "s;%%COMPILER%%;$(identify_compiler);g" \
 	-e "s;%%VENDOR%%;${vendor};g" \
 	-e "s;%%PKGEDBY%%;${packager};g" \
 	-e "s;%%SOURCE_SHA1SUM%%;${source_sha1sum};g" \
