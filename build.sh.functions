@@ -26,7 +26,7 @@ reg() {
 
 all()
 {
-    for METHOD in $METHODS 
+    for METHOD in $METHODS
     do
         case $METHOD in
              all*|*clean|check) ;;
@@ -45,7 +45,7 @@ usage() {
 build_sh() {
     # Register internal functions last
     # The empty reg is trickery to get exactly 1 space at each end of the METHODS string
-    reg all 
+    reg all
     reg
     #
     local OK=0

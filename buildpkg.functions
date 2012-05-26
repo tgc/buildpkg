@@ -193,7 +193,7 @@ error_txt[$E_SVR4_PKG_OVERFLOW]="PKG field exceeds 9 char limit"
 error_txt[$E_SVR4_NAME_OVERFLOW]="NAME field exceeds 256 char limit"
 error_txt[$E_MISSING_EXE]="Executable is missing"
 
-##################################################### 
+#####################################################
 # Helper functions
 #####################################################
 
@@ -424,7 +424,7 @@ unpack()
     fi
 }
 
-# clean(): Scrub build environment 
+# clean(): Scrub build environment
 # params: $1=stage|source|distclean
 clean()
 {
@@ -450,7 +450,7 @@ clean()
                     # during install
                     ${__rm} -f $metadir/compver.*
 		    ;;
-	'meta')	    
+	'meta')
 		    if [ "$(${__uname} -s)" == "SunOS" ]; then
 			for secname in $(list_pkgs)
 			do
@@ -569,7 +569,7 @@ symlink_man()
 	fi
     done
 }
-    
+
 # fix_man(): create compressed pre-formatted manpages from raw ones
 # params: none
 # Run from 'cwd' where 'cwd' contains manX subdirs
@@ -731,7 +731,7 @@ compute_octal()
 	d4=$v; v=0
 	echo $d1$d2$d3$d4
 }
-    
+
 #####################################################
 # Define generic functions for different build stages
 #####################################################
@@ -746,7 +746,7 @@ generic_prep()
     # needed
     get_files
 
-    unpack 0 
+    unpack 0
 
     # Verify that ${patch[$pnum]} is defined
     local pver=${patch[0]-'x'}
@@ -864,7 +864,7 @@ generic_install()
     local arg1=${1-'x'}
     if [ "$arg1" != "x" ]; then
 	destvar=$arg1 # $1 was defined
-    fi 
+    fi
     if [ "$custom_install" -eq 0 ]; then
 	clean stage
 	if [ "$shortroot" -eq 1 ]; then
@@ -898,7 +898,7 @@ generic_install_perl()
 
     # remove special files
     ${__find} ${stagedir} -name "perllocal.pod" \
-	-o -name ".packlist" 		    \
+	-o -name ".packlist"		    \
 	-o -name "*.bs"			    \
 	| ${__xargs} -i rm -f {}
 

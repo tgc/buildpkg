@@ -60,7 +60,7 @@ usedepend=1 # default to looking for a depend file in $metadir
 usescripts=1 # default to add pre/post scripts if available
 usespace=1 # default to looking for a space file in $metadir
 usecompver=1 # default to add compver if available in $metadir
-ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area 
+ignore_unpackaged_files=0 # default to check for unpackaged files in the stage area
 deps_resolve_symlinks=0 # Set to 1 to resolve symlinks before computing deps (requires GNU readlink)
 create_versioned_deps=1 # Set to 1 to create versioned dependencies
 version_all_deps=0 # Set to 1 to add version on *all* deps, even SUNW (if enabled)
@@ -92,7 +92,7 @@ configure_args='--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefi
 # evaluated (using _upls)
 distfile='$secname-$version-$secver.tgc-$os-$arch-$pkgdirdesig'
 
-##################################################### 
+#####################################################
 # "external" functions
 #####################################################
 
@@ -318,7 +318,7 @@ add_dir()
     local group=$3
     local dir=$(_upls $4)
     local secname=$5
-    
+
     if [ "$defperm" == "-" ]; then
 	permlist=$(${__ls} -ld "$dir" | ${__cut} -d " " -f 1)
 	perm=$(compute_octal $permlist)
@@ -691,7 +691,7 @@ parse_def()
 			'name')
 				    name="$(_upls ${line:$equalindex:${#line}})"
 				    ;;
-			'pkgcat')   
+			'pkgcat')
 				    pkgcat="$(_upls ${line:$equalindex:${#line}})"
 				    ;;
 			'pkgvendor')
@@ -700,10 +700,10 @@ parse_def()
 			'pkgdesc'|'shortdesc')
 				    pkgdesc="$(_upls ${line:$equalindex:${#line}})"
 				    ;;
-			'pkgver')   
+			'pkgver')
 				    pkgver="$(_upls ${line:$equalindex:${#line}})"
 				    ;;
-			'maxinst')  
+			'maxinst')
 				    maxinst="$(_upls ${line:$equalindex:${#line}})"
 				    ;;
 		    esac
@@ -927,7 +927,7 @@ do_strip_static()
 	${__strip} $strip_static_args $f
     done
 }
-    
+
 #####################################################
 # Define generic functions for different build stages
 #####################################################
