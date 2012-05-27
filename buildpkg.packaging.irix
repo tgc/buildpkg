@@ -1128,18 +1128,10 @@ auto_rel()
 	-e "s;%%DEPENDENCIES%%;${deps};g" \
 	    ${rn} > "$relmetadir/${topdir}.txt"
 
-    # Add a ChangeLog if it exists
-    if [ -r $metadir/ChangeLog ]; then
-	echo "auto_rel: Adding ChangeLog to relnotes"
-	# See if we can find an entry for this build otherwise complain
-	if [ -z "$(${__grep} ${version}-${pkgver}$ $metadir/ChangeLog)" ]; then
-	    error $E_MISSING_CHGLOGV auto_rel
-	fi
-	echo >> "$relmetadir/${topdir}.txt"
-	cat $metadir/ChangeLog >> "$relmetadir/${topdir}.txt"
-    else
-	error $E_MISSING_CHGLOG auto_rel
-    fi
+    # Add a ChangeLog
+    echo "auto_rel: Adding ChangeLog to relnotes"
+    echo >> "$relmetadir/${topdir}.txt"
+    cat $metadir/ChangeLog >> "$relmetadir/${topdir}.txt"
 }
 
 # auto_dir(): Make sure all necessary dir entries are in prototype
@@ -1346,6 +1338,11 @@ generic_pack()
     if [ "$1" == "shortroot" ]; then
 	error $E_ARG_OBSO generic_pack
     fi
+
+    # Before doing any expensive operations
+    # check that the ChangeLog is in order
+    check_changelog
+
     clean meta
 
     if [ -d ${stagedir}${prefix}/${_mandir} ]; then

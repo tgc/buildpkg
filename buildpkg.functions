@@ -739,6 +739,22 @@ compute_octal()
 	echo $d1$d2$d3$d4
 }
 
+# check_changelog(): Verify that the ChangeLog is updated
+# params: none
+# Verify that the ChangeLog exists and contains an entry for the current
+# version of the software
+check_changelog()
+{
+    if [ -r $metadir/ChangeLog ]; then
+        # See if we can find an entry for this build otherwise complain
+        if [ -z "$(${__grep} ${version}-${pkgver}$ $metadir/ChangeLog)" ]; then
+            error $E_MISSING_CHGLOGV check_changelog
+        fi
+    else
+        error $E_MISSING_CHGLOG check_changelog
+    fi
+}
+
 #####################################################
 # Define generic functions for different build stages
 #####################################################
