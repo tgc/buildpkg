@@ -391,6 +391,11 @@ unpack()
     local suffix
     local absfile
 
+    # Create the $srcdir if it is missing
+    if [ ! -d $srcdir ]; then
+	echo "Creating $srcdir"
+	${__mkdir} -p $srcdir
+    fi
     setdir $srcdir
 
     # If source contains an URL then first
