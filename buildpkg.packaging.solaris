@@ -430,13 +430,13 @@ auto_rel()
     if [ -r $metadir/ChangeLog ]; then
         echo "auto_rel: Adding ChangeLog to relnotes"
         # See if we can find an entry for this build otherwise complain
-        if [ -z "${__grep} ${version}-${pkgver}$" ]; then
-            echo "autorel: WARNING: Did not find ChangeLog entry for ${version}-${pkgver}!"
+        if [ -z "$(${__grep} ${version}-${pkgver}$ $metadir/ChangeLog)" ]; then
+            error $E_MISSING_CHGLOGV auto_rel
         fi
         echo >> "$relmetadir/${secname}.txt"
         cat $metadir/ChangeLog >> "$relmetadir/${secname}.txt"
     else
-        echo "auto_rel: WARNING: ChangeLog is missing!"
+        error $E_MISSING_CHGLOG auto_rel
     fi
 
     ### Add the relnotes to the prototype file

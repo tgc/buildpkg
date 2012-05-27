@@ -173,6 +173,8 @@ E_BAD_LIBS=47
 E_SVR4_PKG_OVERFLOW=48
 E_SVR4_NAME_OVERFLOW=49
 E_MISSING_EXE=50
+E_MISSING_CHGLOG=51
+E_MISSING_CHGLOGV=52
 
 error_txt[$E_BAD_FILE]="File not found"
 error_txt[$E_PATCH_FAILED]="Patch failed"
@@ -192,6 +194,8 @@ error_txt[$E_BAD_LIBS]="config.log defines obsolete libraries!"
 error_txt[$E_SVR4_PKG_OVERFLOW]="PKG field exceeds 9 char limit"
 error_txt[$E_SVR4_NAME_OVERFLOW]="NAME field exceeds 256 char limit"
 error_txt[$E_MISSING_EXE]="Executable is missing"
+error_txt[$E_MISSING_CHGLOG]="ChangeLog is missing"
+error_txt[$E_MISSING_CHGLOGV]="Did not find ChangeLog entry for ${version}-${pkgver}"
 
 #####################################################
 # Helper functions
