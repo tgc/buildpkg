@@ -20,6 +20,8 @@
 
 # Automatic logging is enabled by default
 autolog=1
+# Don't log these methods
+nolog="prep distclean"
 
 # Define script functions and register them
 METHODS=""
@@ -67,7 +69,7 @@ build_sh() {
 
     for METHOD in $*
     do
-	( log_start $METHOD; $METHOD; log_stop )
+	( log_start $METHOD; $METHOD; log_stop $METHOD )
     done
 }
 
@@ -80,7 +82,7 @@ log_start()
     local func=$1
     build_sh_logfile=${topdir}-${version}_${pkgver}-${os}-${arch}-${func}-$(date +%Y%m%d%H%M%S).log
 
-    if [ $autolog -eq 1 ]; then
+    if [ $autolog -eq 1 -a -z "$(${__expr} "$nolog" : ".*\($func\)")" ]; then
 	# save stdout and stderr to file descriptors 3 and 4
 	# then redirect them to $build_sh_logfile
 	echo "Opening logfile: $build_sh_logfile"
@@ -95,7 +97,8 @@ log_start()
 # Stop logging
 log_stop()
 {
-    if [ $autolog -eq 1 ]; then
+    local func=$1
+    if [ $autolog -eq 1 -a -z "$(${__expr} "$nolog" : ".*\($func\)")" ]; then
 	# Log a timestamp
 	date +%Y%m%d%H%M%S
 	# restore stdout and stderr
