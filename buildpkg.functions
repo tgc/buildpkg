@@ -448,8 +448,6 @@ clean()
 			echo "Emptying $stagedir"
 			${__rm} -rf $stagedir # This is very dangerous!
 			${__mkdir} $stagedir
-		    else
-			error $E_BAD_DIR clean
 		    fi
                     # Solaris only - We can't add this to meta since compver is usually created
                     # during install
@@ -867,14 +865,17 @@ generic_install()
     local dest="$stagedir"
     local destvar=DESTDIR
     local arg1=${1-'x'}
+
     if [ "$arg1" != "x" ]; then
 	destvar=$arg1 # $1 was defined
     fi
     if [ "$custom_install" -eq 0 ]; then
 	clean stage
-	if [ "$shortroot" -eq 1 ]; then
-	    dest="${stagedir}${prefix}"
-	    ${__mkdir} -p "$dest"
+	[ "$shortroot" -eq 1 ] && dest="${stagedir}${prefix}"
+	# Create $dest if it is missing
+	if [ ! -d $dest ]; then
+	    echo "Creating $dest"
+	    ${__mkdir} -p $dest
 	fi
 	setdir ${srcdir}/${topsrcdir}/$2
 	${__make} $destvar=$dest install
