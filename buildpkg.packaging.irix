@@ -1039,22 +1039,26 @@ set_configure_args()
 identify_compiler()
 {
     local mycc
+    local compiler
+    local compiler_temp
 
     if [ $mipspro -eq 0 ]; then
 	[ -n "$CC" ] && mycc=$CC || mycc=gcc
 	[ "$1" = "log" ] && $mycc -v
-	local compiler="$($mycc -v 2>&1 | ${__sed} -n '/^gcc/p')"
+	compiler="$($mycc -v 2>&1 | ${__sed} -n '/^gcc/p')"
     else # not gcc
 	if [ "$_os" = "irix53" ]; then
-	    local compiler="Irix 5.3 IDO"
+	    compiler="Irix 5.3 IDO"
 	else
-	    local compiler="$(cc -version 2>&1)"
+	    compiler="$(cc -version 2>&1)"
 	fi
+	[ "$1" = "log" ] && echo "$compiler"
 	if [ "$CXX" = "g++" ]; then
 	    # SGI cc with gnu g++
-	    local compiler_temp="$(g++ -v 2>&1 | ${__sed} -n '/^gcc/ s/gcc/g++/p')"
-	    local compiler="$((echo $compiler; echo $compiler_temp) | ${__awk} '{ printf "%s\\n",$0 }')"
-	    local compiler="${compiler%\\*}"
+	    [ "$1" = "log" ] && $CXX -v
+	    compiler_temp="$($CXX -v 2>&1 | ${__sed} -n '/^gcc/ s/gcc/g++/p')"
+	    compiler="$((echo $compiler; echo $compiler_temp) | ${__awk} '{ printf "%s\\n",$0 }')"
+	    compiler="${compiler%\\*}"
 	fi
     fi
     [ -z "$1" ] && echo "$compiler"
