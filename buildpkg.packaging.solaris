@@ -413,7 +413,7 @@ auto_rel()
     local extracted_env="${temp_extracted_env%\\*}"
     ###
     ### Add dependencies
-    local temp_deps="$(${__cat} $metadir/depend.$secname.all | ${__sed} -e '/^$/d;/^	/d' | ${__sort} -u | ${__awk} '{ printf "%s\\n",$0 }')"
+    local temp_deps="$(${__cat} $metadir/depend.$secname.all | ${__sed} -e '/^$/d;/^	/d' | ${__sort} -u | ${__sed} -e 's;\&;\\&;g' | ${__awk} '{ printf "%s\\n",$0 }')"
     local deps="${temp_deps%\\*}"
     ###
     ${__mkdir} -p $relmetadir
