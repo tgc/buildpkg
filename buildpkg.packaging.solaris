@@ -900,7 +900,7 @@ do_strip_bin()
     echo "Stripping ELF binaries..."
     for f in `${__find} . -type f \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -exec ${__file} {} \; | \
 	${__grep} -v ' dynamic lib ' | \
-	${__sed} -n -e 's/^\(.*\):[	]*ELF.*, not stripped/\1/p'`; do
+	${__sed} -n -e 's/^\(.*\):[	]*ELF.*, not stripped.*/\1/p'`; do
 	${__strip} $strip_elf_args $f || :
     done
 }
