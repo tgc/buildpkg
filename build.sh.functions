@@ -22,6 +22,8 @@
 autolog=1
 # Don't log these methods
 nolog="prep distclean"
+# date format string
+dateformat="%Y%m%d%H%M%S"
 
 # Define script functions and register them
 METHODS=""
@@ -73,6 +75,12 @@ build_sh() {
     done
 }
 
+# Write out a timestamp
+timestamp()
+{
+    date +$dateformat
+}
+
 # Start a logfile
 # Note this should only be used *after* the buildpkg.* libraries
 # have been sourced, otherwise most of the variables used to construct
@@ -80,17 +88,21 @@ build_sh() {
 log_start()
 {
     local func=$1
-    build_sh_logfile=${topdir}-${version}_${pkgver}-${os}-${arch}-${func}-$(date +%Y%m%d%H%M%S).log
+    build_sh_logfile=${topdir}-${version}_${pkgver}-${os}-${arch}-${func}-$(timestamp).log
 
-    if [ $autolog -eq 1 -a -z "$(${__expr} "$nolog" : ".*\($func\)")" ]; then
-	# save stdout and stderr to file descriptors 3 and 4
-	# then redirect them to $build_sh_logfile
-	echo "Opening logfile: $build_sh_logfile"
-	exec 3>&1 4>&2 >$build_sh_logfile 2>&1
-	# Log a timestamp
-	date +%Y%m%d%H%M%S
-	# Get information about the compiler into the logfile
-	identify_compiler log
+    if [ $autolog -eq 1 ]; then
+	if [ -z "$(${__expr} "$nolog" : ".*\($func\)")" ]; then
+	    # save stdout and stderr to file descriptors 3 and 4
+	    # then redirect them to $build_sh_logfile
+	    echo "Opening logfile: $build_sh_logfile"
+	    exec 3>&1 4>&2 >$build_sh_logfile 2>&1
+	    # Log a timestamp
+	    timestamp
+	    # Get information about the compiler into the logfile
+	    identify_compiler log
+	else # $nolog function, just add a timestamp
+	    timestamp
+	fi
     fi
 }
 
@@ -100,7 +112,7 @@ log_stop()
     local func=$1
     if [ $autolog -eq 1 -a -z "$(${__expr} "$nolog" : ".*\($func\)")" ]; then
 	# Log a timestamp
-	date +%Y%m%d%H%M%S
+	timestamp
 	# restore stdout and stderr
 	exec 1>&3 2>&4
 	echo "Closing logfile: $build_sh_logfile"
