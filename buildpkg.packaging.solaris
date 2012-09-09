@@ -660,6 +660,10 @@ parse_def()
     local legalend=0
     local hasaddedpkginfo=0
     local condexpr=""
+    local pkgdef_file=pkgdef
+
+    # Check and see if there is an arch specific pkgdef file
+    [ -r $metadir/pkgdef.$arch ] && pkgdef_file=pkgdef.$arch
 
     while read line
     do
@@ -748,7 +752,7 @@ parse_def()
 		fi
 		;;
 	esac
-    done < $metadir/pkgdef
+    done < $metadir/$pkgdef_file
     # If there is no blank line at the end of a pkgdef section (if there is only one section that is very
     # likely) then we end up here without having executed the 'section end' actions (case '' above)
     if [ $legalend -eq 0 ]; then
