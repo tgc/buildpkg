@@ -755,6 +755,23 @@ check_changelog()
     fi
 }
 
+# setup_gnu_link: Setup links in $prefix/gnu/bin
+# params: list of programs to link
+# For each program given, create a symlink from $prefix/bin/program to
+# $prefix/gnu/bin with the first character stripped from the name
+setup_gnu_link()
+{
+    local program
+
+    ${__mkdir} -p ${stagedir}${prefix}/gnu/bin
+    setdir ${stagedir}${prefix}/gnu/bin
+
+    for program in $@
+    do
+	${__ln_s} ../../bin/$program ${program:1}
+    done
+}
+
 #####################################################
 # Define generic functions for different build stages
 #####################################################
