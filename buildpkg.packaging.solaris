@@ -574,6 +574,10 @@ auto_deps()
     local secname=$1
     local pkgname=$(get_pkgname $secname)
     local temp
+    local depend_file=depend
+
+    # Check and see if there is an arch specific depend file
+    [ -r $metadir/depend.$arch ] && depend_file=depend.$arch
 
     deps="$(extract_deps $secname | ${__sort} -u)"
     # We need to sort out any packages created from the same build
