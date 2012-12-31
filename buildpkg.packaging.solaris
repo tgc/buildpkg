@@ -589,11 +589,11 @@ auto_deps()
     done
     # Parse any speciel depends
     # We don't do ignore_deps processing for these deps
-    if [ -r $metadir/depend ]; then
+    if [ -r $metadir/$depend_file ]; then
 	local extra_pkgname # Package that should have the depend
 	local extra_dep_pkgname # The name of depend (either a pkgname or a secname)
 	local extra_dep_version # version of the depend (or auto keyword)
-	${__sed} -n "/^$pkgname /p" $metadir/depend |
+	${__sed} -n "/^$pkgname /p" $metadir/$depend_file |
 	while read extra_pkgname extra_dep_pkgname extra_dep_version
 	do
 	    local internal_dep=0
