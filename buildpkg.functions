@@ -909,12 +909,8 @@ makeinstall()
 generic_install()
 {
     local dest="$stagedir"
-    local destvar=DESTDIR
-    local arg1=${1-'x'}
+    local destvar=${1:-DESTDIR}
 
-    if [ "$arg1" != "x" ]; then
-	destvar=$arg1 # $1 was defined
-    fi
     if [ "$custom_install" -eq 0 ]; then
 	clean stage
 	[ "$shortroot" -eq 1 ] && dest="${stagedir}${prefix}"
