@@ -212,28 +212,24 @@ add_scripts()
 }
 
 # add_file(): add a file entry to the prototype file
-# params: $1 = owner $2 = group $3 = permissions $4 = filename
+# params: $1 = owner $2 = group $3 = permissions $4 = filename $5 = metafile suffix
 # Additions will be done to the file $metadir/prototype
 # $4 must be relative to $stagedir$prefix (or just $stagedir if using shortroot)
-# We will not check for the existence of $4
 add_file()
 {
-    local arg1=${1-'x'}
-    if [ "$arg1" == "x" ]; then
-	error $E_MISSING_ARGS add_meta
+    if [ $# -lt 5 ]; then
+	error $E_MISSING_ARGS add_file
     fi
-    local arg2=${2-'x'}
-    if [ "$arg2" == "x" ]; then
-	error $E_MISSING_ARGS add_meta
-    fi
-    local arg3=${3-'x'}
-    if [ "$arg2" == "x" ]; then
-	error $E_MISSING_ARGS add_meta
-    fi
-    if [ -r "$arg4" ]; then
-	echo "f none $arg4 $3 $1 $2" >> $metadir/prototype
+    local owner=$1
+    local group=$2
+    local perms=$3
+    local file=$4
+    local secname=$5
+
+    if [ -r "$file" ]; then
+	echo "f none $file $perms $owner $group" >> $metadir/prototype.$secname
     else
-	error $E_BAD_FILE add_meta_file
+	error $E_BAD_FILE add_file
     fi
 }
 
