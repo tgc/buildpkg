@@ -80,7 +80,7 @@ _mandir=share/man
 _infodir=share/info
 
 # Default configure args
-configure_args='--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefix}/${_infodir}'
+configure_args='${gnu_link_progs:+--program-prefix=$gnu_prefix} --prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefix}/${_infodir}'
 
 # Host specific configuration
 [ -r $buildpkgscripts/config.`hostname`.solaris ] && . $buildpkgscripts/config.`hostname`.solaris

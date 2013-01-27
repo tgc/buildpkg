@@ -144,6 +144,12 @@ maketest=0
 # When patching use -p1 as default prefix
 patch_prefix="-p1"
 
+# Settings for gnu_link
+# GNU prefix
+gnu_prefix=g
+# GNU dir
+_gnudir=gnu
+
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
 # ie: libmad-0.14.2b-1.sb-sol5.8-sparcv9-local
@@ -755,20 +761,22 @@ check_changelog()
     fi
 }
 
-# setup_gnu_link: Setup links in $prefix/gnu/bin
+# gnu_link: Setup links in $prefix/$_gnudir
 # params: list of programs to link
-# For each program given, create a symlink from $prefix/bin/program to
-# $prefix/gnu/bin with the first character stripped from the name
-setup_gnu_link()
+# For each program given, create a symlink from $prefix/${_bindir}/program to
+# $prefix/gnu with the first character stripped from the name
+gnu_link()
 {
     local program
 
-    ${__mkdir} -p ${stagedir}${prefix}/gnu/bin
-    setdir ${stagedir}${prefix}/gnu/bin
+    ${__mkdir} -p ${stagedir}${prefix}/$_gnudir
+    setdir ${stagedir}${prefix}/$_gnudir
 
     for program in $@
     do
-	${__ln_s} ../../bin/$program ${program:1}
+	local dest=${program:1}
+	echo "Linking $prefix/${_bindir}/$program to $prefix/$_gnudir/$dest"
+	${__ln_s} ../${_bindir}/$program ${program:1}
     done
 }
 
@@ -925,6 +933,13 @@ generic_install()
     fi
     if [ $autonuke -eq 1 ]; then
 	do_autonuke
+    fi
+    if [ -n "$gnu_link_progs" ]; then
+	# There are programs that should be linked to $prefix/$_gnudir
+	local prog
+	for prog in $gnu_link_progs; do
+	    gnu_link ${gnu_prefix}${prog}
+	done
     fi
 }
 
