@@ -236,7 +236,7 @@ add_file()
 # add_proto(): Add entries to prototype file
 # params: $1 = permission $2 = owner $3 = group $4 = filespec $5 = metafile suffix
 # $5 is usually the section header from pkgdef
-# Additions will be done to the file $metadir/prototype.$pkgname
+# Additions will be done to the file $metadir/prototype.$secname
 add_proto()
 {
     if [ $# -lt 5 ]; then
