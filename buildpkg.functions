@@ -831,6 +831,7 @@ generic_build()
 	    do
 		export $acvar
 	    done
+	    echo $__configure $(_upls $configure_args)
 	    $__configure $(_upls $configure_args)
 	else
 	    # Platform specific configure run
