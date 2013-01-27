@@ -8,31 +8,31 @@
 
 REQ_DIRS="stage src meta"
 
-arg1=${1-'x'}
-if [ "$arg1" == "x" ]; then
+topdir=$1
+if [ -z "$topdir" ]; then
     error $E_MISSING_ARGS
 else
     setdir "$buildpkgbase"
 fi
 
-echo "Creating sandbox for $arg1"
-${__mkdir} "$arg1"
+echo "Creating sandbox for $topdir"
+${__mkdir} "$topdir"
 for i in $REQ_DIRS
 do
-    ${__mkdir} $arg1/$i
+    ${__mkdir} $topdir/$i
 done
 
-${__cp} $buildpkgscripts/build.sh.generic $arg1/build.sh
+${__cp} $buildpkgscripts/build.sh.generic $topdir/build.sh
 if [ "$(${__uname} -s)" == "IRIX" -o "$(${__uname} -s)" == "IRIX64" ]; then
-    ${__sed} -e "s;/bin/bash;$__bash;g" $arg1/build.sh > $arg1/build.sh.tmp
-    ${__mv} $arg1/build.sh.tmp $arg1/build.sh
-    ${__cp} $buildpkgscripts/pkgdef.template.irix $arg1/meta/pkgdef
+    ${__sed} -e "s;/bin/bash;$__bash;g" $topdir/build.sh > $topdir/build.sh.tmp
+    ${__mv} $topdir/build.sh.tmp $topdir/build.sh
+    ${__cp} $buildpkgscripts/pkgdef.template.irix $topdir/meta/pkgdef
 fi
 
 if [ "$(${__uname} -s)" == "SunOS" ]; then
-    ${__cp} $buildpkgscripts/pkgdef.template $arg1/meta/pkgdef
+    ${__cp} $buildpkgscripts/pkgdef.template $topdir/meta/pkgdef
 fi
 
-${__cp} $buildpkgscripts/relnotes.template.irix $arg1/meta/relnotes
+${__cp} $buildpkgscripts/relnotes.template.irix $topdir/meta/relnotes
 # Make build script executable
-chmod 755 $arg1/build.sh
+chmod 755 $topdir/build.sh
