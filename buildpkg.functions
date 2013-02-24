@@ -364,7 +364,7 @@ fetch_source()
     if [ ! -r "$path/$file" ]; then
 	echo "fetch_source: Downloading $url"
 	if [ -x ${__curl} ]; then
-	    ${__curl} -# -L --retry 2 -C - -o $srcfiles/$file "$url"
+	    ${__curl} -R -# -L --retry 2 -C - -o $srcfiles/$file "$url"
 	else
 	    error $E_MISSING_EXE fetch_source
 	fi
