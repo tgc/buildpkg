@@ -135,6 +135,10 @@ make_build_target=""
 # We default to 'check'
 make_check_target="check"
 
+# Allow overriding the make target for running the install
+# We default to 'install'
+make_install_target=install
+
 # Allow skipping the configure run
 no_configure=0
 
@@ -920,7 +924,7 @@ generic_install()
 	    ${__mkdir} -p $dest
 	fi
 	setdir ${srcdir}/${topsrcdir}/$2
-	${__make} $destvar=$dest install
+	${__make} $(_upls $make_install_target) $destvar=$dest
 	if [ $? -ne 0 ]; then
 	    error $E_BAD_MAKE generic_install
 	fi
