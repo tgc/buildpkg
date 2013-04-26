@@ -1111,7 +1111,7 @@ auto_rel()
     [ -r "$metadir/sums" ] && temp_source_sha1sum="$(cat $metadir/sums | ${__awk} '{ printf "%s\\n",$0 }')"
     source_sha1sum="${temp_source_sha1sum%\\*}"
     # End of SHA1 sum computing
-    local temp_extracted_env="$(${__sed} -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh >> /tmp/env.sh; bash /tmp/env.sh|${__grep} ^ENV|${__sed} -e 's/ENV //g'|${__awk} '{ printf "%s\\n",$0 }' && ${__rm} -f /tmp/env.sh)"
+    local temp_extracted_env="$(${__sed} -e 's/export /echo ENV /g' ${buildpkgbase}/${pkgdir}/build.sh | ${__bash} | ${__sed} -n 's/^ENV \([^=]*\)=.*/echo \1=$\1/p' | ${__bash} | ${__awk} '{ printf "%s\\n",$0 }')"
     # Remove trailing \n
     local extracted_env="${temp_extracted_env%\\*}"
     if [ -r ${depends}_all ]; then
