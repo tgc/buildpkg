@@ -66,6 +66,15 @@ create_versioned_deps=1 # Set to 1 to create versioned dependencies
 version_all_deps=0 # Set to 1 to add version on *all* deps, even SUNW (if enabled)
 include_all_deps=1 # Set to 1 to create deps on packages regardless of vendor
 
+# Maximum length of the PKG attribute in pkginfo(4) files
+# According to pkginfo(4) this is limited to 9 characters on Solaris < 9
+# and 32 characters on Solaris 9 and later.
+# However more than 9 chars seems to work fine on Solaris 7 & 8.
+case $os in
+    sunos5.[0123456]) maxpkgnamelen=9;;
+    *) maxpkgnamelen=32;;
+esac
+
 # To exclude a dependency, add its name to this variable
 ignore_deps=""
 
@@ -133,7 +142,7 @@ pack_info()
     local pstamp="$os-$(${__uname} -n)`date '+%Y%m%d%H%M'`"
 
     # Check length of pkgname and name to make sure we're within limits
-    [ ${#pkgname} -gt 9 ] && error $E_SVR4_PKG_OVERFLOW pack_info
+    [ ${#pkgname} -gt $maxpkgnamelen ] && error $E_SVR4_PKG_OVERFLOW pack_info
     [ ${#name} -gt 256 ] && error $E_SVR4_NAME_OVERFLOW pack_info
 
     ${__sed} -e "s#%%pkgname%%#$pkgname#g" \
