@@ -135,7 +135,7 @@ os=irix`${__uname} -r`
 _os=$(${__uname} -sr|${__sed} -e 's/ //g' -e 's/\.//g' -e 's/IRIX64/IRIX/g'|${__tr} '[A-Z]' '[a-z]')
 cpu=mips3
 
-configure_args='--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefix}/${_infodir}'
+configure_args=(--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefix}/${_infodir})
 
 META_CLEAN="$topdir.spec $topdir.idb files.tmp ${depends##*/}_auto ${depends##*/}_all sums"
 
@@ -1084,12 +1084,8 @@ auto_rel()
     fi
     local relmetadir=${stagedir}${metainstalldir}relnotes/$topdir-$version-$pkgver
     # compute configure info for relnotes
-    local cf="$(_upls $configure_args)"
     [ -n "$my_ac_overrides" -a $no_configure -eq 0 ] && local aco="$(for ar in $my_ac_overrides; do echo $ar; done | ${__awk} '{ printf "%s \\\\ \\n",$0 }')"
-    local temp_fullcf="$(echo "$__configure $cf" | ${__awk} '{ printf "%s\\n",$0 }')"
-    temp_fullcf="$(echo "${aco}${temp_fullcf}")"
-    # Remove trailing whitespace and \n
-    local fullcf="${temp_fullcf%\\*}"
+    local fullcf="${aco}${__configure} "${configure_args[@]}""
     # end
     local pkgnam_temp=$(${__grep} 'pkgname=' $metadir/pkgdef)
     local pkgnam=$(_upls ${pkgnam_temp#pkgname=*})
@@ -1322,7 +1318,7 @@ run_configure()
     do
 	export $acvar
     done
-    $__configure $(_upls $configure_args)
+    $__configure "${configure_args[@]}"
     if [ $check_ac -gt 0 ]; then
 	local out="$(check_ac warn $configlog)"
 	if [ -n "$out" ]; then

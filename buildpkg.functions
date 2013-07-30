@@ -71,8 +71,8 @@ topinstalldir=/usr/tgcware
 prefix=$topinstalldir
 metainstalldir=$topinstalldir
 
-# Keep this in hard-quotes to delay expansion
-configure_args='--prefix=$prefix --disable-nls'
+# The default configure args
+configure_args=(--prefix=$prefix --disable-nls)
 __configure="./configure"
 
 # Docdir relative to $prefix
@@ -835,8 +835,8 @@ generic_build()
 	    do
 		export $acvar
 	    done
-	    echo $__configure $(_upls $configure_args)
-	    $__configure $(_upls $configure_args)
+	    echo $__configure "${configure_args[@]}"
+	    $__configure "${configure_args[@]}"
 	else
 	    # Platform specific configure run
 	    run_configure
