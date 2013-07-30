@@ -994,45 +994,6 @@ auto_src()
     fi
 }
 
-# rel_conf_sub(): Put configure_args into the relnotes template
-# params: none
-# The set_configure_args command will call this function to
-# substitute %%CONFIGURE%% in the relnotes template at the
-# time of expansion.
-rel_conf_sub()
-{
-    local rn
-    local i
-    for i in relnotes relnotes.${_os}
-    do
-	[ -r ${metadir}/${i} ] && rn=$i
-    done
-    # Duplicated code from auto_rel :(
-    # compute configure info for relnotes
-    local cf="$(_upls $configure_args)"
-    [ -n "$ac_overrides" ] && local aco="$(echo $ac_overrides | ${__tr} ' ' '\n' | ${__awk} '{ printf "%s \\\\ \\n",$0 }')"
-    local temp_fullcf="$(echo "$__configure $cf" | ${__awk} '{ printf "%s\\n",$0 }')"
-    temp_fullcf="$(echo "${aco}${temp_fullcf}")"
-    # Remove trailing whitespace and \n
-    local fullcf="${temp_fullcf%\\*}"
-    # end
-    if [ -r ${metadir}/${rn} ]; then
-	${__sed} -e "s;%%CONFIGURE%%;$fullcf;g" \
-	    ${metadir}/${rn} > ${metadir}/${rn}.txt
-    fi
-}
-
-# set_configure_args(): Stuff new arguments into configure_args
-# params: $1 = configure arguments
-# If you want non-default configure_args put into relnotes
-# automatically, then use this function to set them instead
-# of overriding the configure_args variable directly.
-set_configure_args()
-{
-    configure_args="$1"
-    rel_conf_sub
-}
-
 # identify_compiler(): This outputs information about the compiler
 # params: $1 = { log }
 # This generates the compiler information used in relnotes and logging
