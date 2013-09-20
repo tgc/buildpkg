@@ -55,6 +55,10 @@ arch=`uname -p`
 os=sunos`${__uname} -r`
 gnu_os_ver=$(${__uname} -r | ${__sed} -e 's/^5/2/')
 
+# By default, the build_arch is the same as arch, alternatives are sparc64 and
+# x86_64. It should be set to either when building for tgcware64.
+build_arch=$arch
+
 # Default pkginfo.in file
 pkginfo=$buildpkgscripts/pkginfo.in
 
@@ -102,7 +106,7 @@ configure_args=(${gnu_link_progs:+--program-prefix=$gnu_prefix} --prefix=$prefix
 # ie: libmad-0.14.2b-1.sb-sol5.8-sparc-local
 # We hardquote it so that we can control when we want it
 # evaluated (using _upls)
-distfile='$secname-$version-$secver.tgc-$os-$arch-$pkgdirdesig'
+distfile='$secname-$version-$secver.tgc-$os-$build_arch-$pkgdirdesig'
 
 #####################################################
 # "external" functions
@@ -582,6 +586,7 @@ auto_deps()
 
     # Check and see if there is an arch specific depend file
     [ -r $metadir/depend.$arch ] && depend_file=depend.$arch
+    [ -r $metadir/depend.$build_arch ] && depend_file=depend.$build_arch
 
     deps="$(extract_deps $secname | ${__sort} -u)"
     # We need to sort out any packages created from the same build
@@ -672,6 +677,7 @@ parse_def()
 
     # Check and see if there is an arch specific pkgdef file
     [ -r $metadir/pkgdef.$arch ] && pkgdef_file=pkgdef.$arch
+    [ -r $metadir/pkgdef.$build_arch ] && pkgdef_file=pkgdef.$build_arch
 
     while read line
     do
