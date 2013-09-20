@@ -67,7 +67,8 @@ topsrcdir=$topdir-$version # it may be necessary to override this
 
 srcfiles=$buildpkgbase/srcfiles
 
-topinstalldir=/usr/tgcware
+pkgdirdesig=tgcware # topinstalldir suffix
+topinstalldir=/usr/$pkgdirdesig
 prefix=$topinstalldir
 metainstalldir=$topinstalldir
 
@@ -99,8 +100,6 @@ _os=$(${__uname} -sr|${__sed} -e 's/ //g' -e 's/\.//g'|${__tr} '[A-Z]' '[a-z]')
 pkgprefix=SB
 pkgname=$pkgprefix$topdir # overriding this will be common
 name=$topdir # as will this ditto
-
-pkgdirdesig=${topinstalldir##/*/} # topinstalldir suffix
 
 # Functionality controls
 symlinkman=0 # Don't replace .so linking with symlinks pr. default
