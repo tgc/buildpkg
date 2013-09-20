@@ -49,8 +49,11 @@ pkgdesc="mumble mubmle... hmm someone forgot to fill this out!"
 pkgedby="Tom G. Christensen"
 email=swpkg@jupiterrise.com
 
+# Set some helper vars that describes arch and OS version
 arch=`uname -p`
+[ "$arch" = "sparc" ] && { vendor="sun"; sparc=1; } || { vendor="pc"; intel=1; }
 os=sunos`${__uname} -r`
+gnu_os_ver=$(${__uname} -r | ${__sed} -e 's/^5/2/')
 
 # Default pkginfo.in file
 pkginfo=$buildpkgscripts/pkginfo.in
