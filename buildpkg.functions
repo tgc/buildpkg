@@ -152,6 +152,8 @@ patch_prefix="-p1"
 gnu_prefix=g
 # GNU dir
 _gnudir=gnu
+# Add --program-prefix to configure if gnu_link is requested?
+gnu_configure=1
 
 # Distfiles should be named like this
 # <name>-<version>-<pkgver>.sb-<os>-<cpu>-<pkgdirdesig>
@@ -764,23 +766,37 @@ check_changelog()
     fi
 }
 
-# gnu_link: Setup links in $prefix/$_gnudir
+# do_gnu_link: Create symlinks in $prefix/$_gnudir
 # params: list of programs to link
 # For each program given, create a symlink from $prefix/${_bindir}/program to
 # $prefix/gnu with the first character stripped from the name
-gnu_link()
+do_gnu_link()
 {
     local program
 
     ${__mkdir} -p ${stagedir}${prefix}/$_gnudir
-    setdir ${stagedir}${prefix}/$_gnudir
+    cd ${stagedir}${prefix}/$_gnudir
 
     for program in $@
     do
 	local dest=${program:1}
 	echo "Linking $prefix/${_bindir}/$program to $prefix/$_gnudir/$dest"
-	${__ln_s} ../${_bindir}/$program ${program:1}
+	${__ln_s} ../${_bindir}/$program ${dest}
     done
+}
+
+# gnu_link: Prepare for gnu symlink setup
+# params: list of programs to link
+# Each param is added to the internal gnu_link_progs array
+# It will also add --program-prefix=$gnu_prefix to configure_args if requested
+gnu_link()
+{
+    local item
+    for item in "$@"
+    do
+	gnu_link_progs+=($item)
+    done
+    [ $gnu_configure -eq 1 ] && configure_args=(--program-prefix=$gnu_prefix "${configure_args[@]}")
 }
 
 #####################################################
@@ -934,13 +950,11 @@ generic_install()
     if [ $autonuke -eq 1 ]; then
 	do_autonuke
     fi
-    if [ -n "$gnu_link_progs" ]; then
-	# There are programs that should be linked to $prefix/$_gnudir
-	local prog
-	for prog in $gnu_link_progs; do
-	    gnu_link ${gnu_prefix}${prog}
-	done
-    fi
+    # If there are programs that should be linked to $prefix/$_gnudir
+    local prog
+    for prog in "${gnu_link_progs[@]}"; do
+	do_gnu_link ${gnu_prefix}${prog}
+    done
 }
 
 # generic_install_perl(): Install already built perl module
