@@ -436,6 +436,7 @@ unpack()
 	'Z') ${__gzip} -dc $absfile | ${__tar} -xf -;;
 	'tgz') ${__gzip} -dc $absfile | ${__tar} -xf -;;
 	'xz') ${__xz} -dc $absfile | ${__tar} -xf -;;
+	'lz') ${__lzip} -dc $absfile | ${__tar} -xf -;;
 	'zip') ${__unzip} -q $absfile;;
 	*) error $E_BAD_COMPRESS unpack
     esac

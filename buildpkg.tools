@@ -9,6 +9,7 @@ __vtar=/usr/bin/tar # vendor supplied tar
 __bzip2=/usr/tgcware/bin/bzip2
 __gzip=/usr/tgcware/bin/gzip
 __xz=/usr/tgcware/bin/xz
+__lzip=/usr/tgcware/bin/lzip
 __patch=/usr/tgcware/bin/patch # GNU patch 2.5 or better please!
 __rm=/usr/bin/rm
 __rmdir=/usr/bin/rmdir
