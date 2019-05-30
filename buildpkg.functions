@@ -861,7 +861,7 @@ generic_build()
     if [ $? -ne 0 ]; then
 	error $E_BAD_CONFIG generic_build
     fi
-    ${__make} $(_upls $make_build_target)
+    ${__make} ${make_build_opts} $(_upls $make_build_target)
     if [ $? -ne 0 ]; then
 	error $E_BAD_MAKE generic_build
     fi
