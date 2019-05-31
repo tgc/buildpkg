@@ -108,6 +108,12 @@ configure_args=(--prefix=$prefix --mandir=${prefix}/${_mandir} --infodir=${prefi
 # evaluated (using _upls)
 distfile='$secname-$version-$secver.tgc-$os-$build_arch-$pkgdirdesig'
 
+# What pkgdef file to use
+pkgdef_file=pkgdef
+# Check and see if there is an arch specific pkgdef file
+[ -r $metadir/pkgdef.$arch ] && pkgdef_file=pkgdef.$arch
+[ -r $metadir/pkgdef.$build_arch ] && pkgdef_file=pkgdef.$build_arch
+
 #####################################################
 # "external" functions
 #####################################################
@@ -659,7 +665,7 @@ auto_deps()
     done >> $metadir/depend.$secname.auto
 }
 
-# parse_pkgdef(): Read in $metadir/pkgdef
+# parse_pkgdef(): Read in $metadir/$pkgdef_file
 # params: none
 # This will parse the package descriptions in
 # pkgdef that tells us how many packages there
@@ -673,11 +679,6 @@ parse_def()
     local legalend=0
     local hasaddedpkginfo=0
     local condexpr=""
-    local pkgdef_file=pkgdef
-
-    # Check and see if there is an arch specific pkgdef file
-    [ -r $metadir/pkgdef.$arch ] && pkgdef_file=pkgdef.$arch
-    [ -r $metadir/pkgdef.$build_arch ] && pkgdef_file=pkgdef.$build_arch
 
     while read line
     do
