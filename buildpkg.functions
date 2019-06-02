@@ -398,7 +398,7 @@ get_files()
 # unpack(): Unpack source
 # params: $1 = source number (arrayindex)
 # It will detect filetype and unpack
-# .tar, .tgz, .gz, .bz2, .xz, .zip and .Z supported
+# .tar, .tgz, .gz, .bz2, .xz, .lzma, .zip and .Z supported
 unpack()
 {
     local source=${source[$1]}
@@ -435,7 +435,7 @@ unpack()
 	'bz2') ${__bzip2} -dc $absfile | ${__tar} -xf -;;
 	'Z') ${__gzip} -dc $absfile | ${__tar} -xf -;;
 	'tgz') ${__gzip} -dc $absfile | ${__tar} -xf -;;
-	'xz') ${__xz} -dc $absfile | ${__tar} -xf -;;
+	'xz'|'lzma') ${__xz} -dc $absfile | ${__tar} -xf -;;
 	'lz') ${__lzip} -dc $absfile | ${__tar} -xf -;;
 	'zip') ${__unzip} -q $absfile;;
 	*) error $E_BAD_COMPRESS unpack
